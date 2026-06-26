@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Budget · Mashup</title>
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <style>
+        /* ----- Apple + Google mashup styles (unchanged) ----- */
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa;
+            background-image: radial-gradient(circle at 10% 20%, rgba(26, 115, 232, 0.04) 0%, transparent 60%), radial-gradient(circle at 90% 80%, rgba(234, 67, 53, 0.04) 0%, transparent 60%), radial-gradient(circle at 40% 60%, rgba(251, 188, 5, 0.03) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(16px) saturate(1.4);
+            -webkit-backdrop-filter: blur(16px) saturate(1.4);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 24px -6px rgba(0, 0, 0, 0.06), 0 2px 8px -4px rgba(0, 0, 0, 0.02);
+            border-radius: 24px;
+            transition: box-shadow 0.25s ease, transform 0.2s ease;
+        }
+        
+        .glass-card:hover {
+            box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.12), 0 4px 16px -6px rgba(0, 0, 0, 0.04);
+        }
+        
+        .elevation-1 {
+            box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.06), 0 1px 4px -1px rgba(0, 0, 0, 0.02);
+        }
+        
+        .elevation-2 {
+            box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.08), 0 2px 8px -2px rgba(0, 0, 0, 0.02);
+        }
+        
+        .large-title {
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            font-size: 1.75rem;
+            line-height: 1.2;
+        }
+        
+        @media (min-width: 640px) {
+            .large-title {
+                font-size: 2.25rem;
+            }
+        }
+        
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.2rem 0.7rem;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+            text-transform: capitalize;
+            background: rgba(0, 0, 0, 0.04);
+            color: #444;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            transition: all 0.15s ease;
+        }
+        
+        .chip-income {
+            background: #e6f4ea;
+            color: #1e7e34;
+            border-color: #b7e1c7;
+        }
+        
+        .chip-food {
+            background: #fef7e0;
+            color: #b1610a;
+            border-color: #fde9b3;
+        }
+        
+        .chip-transport {
+            background: #e8f0fe;
+            color: #1967d2;
+            border-color: #c2d8fc;
+        }
+        
+        .chip-shopping {
+            background: #fce8e6;
+            color: #b31412;
+            border-color: #f8cdc9;
+        }
+        
+        .chip-bills {
+            background: #e8e0f5;
+            color: #5e3c9b;
+            border-color: #d4c4ed;
+        }
+        
+        .chip-health {
+            background: #e0f7e9;
+            color: #0d652d;
+            border-color: #b8e6cd;
+        }
+        
+        .chip-entertainment {
+            background: #f3e8fd;
+            color: #7c3a9e;
+            border-color: #e2d0f5;
+        }
+        
+        .chip-other {
+            background: #f1f3f4;
+            color: #5f6368;
+            border-color: #e0e2e4;
+        }
+        
+        .apple-input {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1.5px solid rgba(0, 0, 0, 0.06);
+            border-radius: 14px;
+            padding: 0.65rem 1rem;
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+            width: 100%;
+            color: #1c1c1e;
+            font-weight: 450;
+        }
+        
+        .apple-input:focus {
+            border-color: #1a73e8;
+            background: rgba(255, 255, 255, 0.85);
+            box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.12), inset 0 1px 3px rgba(0, 0, 0, 0.02);
+            outline: none;
+        }
+        
+        .apple-input::placeholder {
+            color: #9aa0a6;
+            font-weight: 400;
+        }
+        
+        .apple-select {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1.5px solid rgba(0, 0, 0, 0.06);
+            border-radius: 14px;
+            padding: 0.65rem 1rem;
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+            color: #1c1c1e;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239aa0a6' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            padding-right: 2.5rem;
+            cursor: pointer;
+        }
+        
+        .apple-select:focus {
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.12);
+            outline: none;
+        }
+        
+        .fab-add {
+            background: #1a73e8;
+            color: #fff;
+            border: none;
+            border-radius: 60px;
+            padding: 0.75rem 1.8rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            letter-spacing: 0.01em;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 12px -2px rgba(26, 115, 232, 0.3);
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        
+        .fab-add:hover {
+            background: #1557b0;
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px -4px rgba(26, 115, 232, 0.35);
+        }
+        
+        .fab-add:active {
+            transform: scale(0.96);
+        }
+        
+        .ripple {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ripple::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(255, 255, 255, 0.25) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+        
+        .ripple:hover::after {
+            opacity: 1;
+        }
+        
+        .tx-item {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 18px;
+            padding: 0.6rem 1rem;
+            transition: all 0.18s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+        
+        .tx-item:hover {
+            background: rgba(255, 255, 255, 0.8);
+            border-color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 4px 16px -8px rgba(0, 0, 0, 0.06);
+            transform: translateY(-1px);
+        }
+        
+        .delete-btn-apple {
+            color: #9aa0a6;
+            transition: all 0.15s ease;
+            border-radius: 40px;
+            padding: 0.3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .delete-btn-apple:hover {
+            color: #d93025;
+            background: rgba(217, 48, 37, 0.06);
+        }
+        
+        .tx-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .tx-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .tx-list::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 20px;
+        }
+        
+        .tx-list::-webkit-scrollbar-thumb:hover {
+            background: #b0b5bb;
+        }
+        
+        .reset-google {
+            color: #5f6368;
+            font-weight: 500;
+            font-size: 0.85rem;
+            padding: 0.4rem 0.9rem;
+            border-radius: 40px;
+            transition: all 0.15s ease;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        
+        .reset-google:hover {
+            background: rgba(0, 0, 0, 0.04);
+            color: #d93025;
+        }
+        
+        @keyframes fadeSlideUp {
+            0% {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-slide {
+            animation: fadeSlideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        
+        .empty-state svg {
+            opacity: 0.4;
+        }
+        
+        @media (max-width: 640px) {
+            .glass-card {
+                border-radius: 20px;
+                padding: 1.2rem !important;
+            }
+            .fab-add {
+                width: 100%;
+                justify-content: center;
+                padding: 0.7rem 1.2rem;
+            }
+        }
+        
+        .summary-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+        
+        @media (min-width: 640px) {
+            .summary-number {
+                font-size: 2.2rem;
+            }
+        }
+        
+        .chip-sm {
+            font-size: 0.65rem;
+            padding: 0.1rem 0.6rem;
+        }
+        /* save indicator & toast */
+        
+        #saveIndicator {
+            transition: opacity 0.4s ease, transform 0.3s ease;
+            opacity: 0;
+            transform: scale(0.92);
+            pointer-events: none;
+        }
+        
+        #saveIndicator.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .toast-error {
+            background: #d93025;
+            color: #fff;
+            border-radius: 60px;
+            padding: 0.3rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            box-shadow: 0 4px 12px rgba(217, 48, 37, 0.25);
+        }
+        
+        .toast-error svg {
+            width: 14px;
+            height: 14px;
+        }
+    </style>
+</head>
+
+<body class="flex items-center justify-center p-3 sm:p-6 min-h-screen">
+
+    <div class="w-full max-w-4xl mx-auto">
+
+        <!-- header -->
+        <div class="flex items-center justify-between mb-5 sm:mb-7">
+            <h1 class="large-title text-gray-900 flex items-center gap-2">
+                <span class="text-3xl sm:text-4xl">📊</span> Budget
+            </h1>
+            <div class="flex items-center gap-3">
+                <span id="saveIndicator" class="text-xs font-medium text-emerald-600 bg-emerald-50/80 px-3 py-1 rounded-full border border-emerald-200/60">
+                    💾 Saved
+                </span>
+                <button id="resetBtn" class="reset-google">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- summary cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div class="glass-card p-5 sm:p-6 elevation-1">
+                <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</p>
+                <p id="balanceDisplay" class="summary-number text-gray-900 mt-0.5">$0.00</p>
+            </div>
+            <div class="glass-card p-5 sm:p-6 elevation-1">
+                <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Income</p>
+                <p id="incomeDisplay" class="summary-number text-emerald-600 mt-0.5">$0.00</p>
+            </div>
+            <div class="glass-card p-5 sm:p-6 elevation-1">
+                <p class="text-xs font-medium text-gray-500 uppercase tracking-wider">Expenses</p>
+                <p id="expenseDisplay" class="summary-number text-rose-600 mt-0.5">$0.00</p>
+            </div>
+        </div>
+
+        <!-- add transaction – using div instead of form to avoid sandbox issues -->
+        <div class="glass-card p-5 sm:p-6 mb-6 elevation-2">
+            <div id="transactionForm" class="flex flex-col sm:flex-row items-end gap-3">
+                <div class="flex-1 w-full">
+                    <input type="text" id="description" placeholder="Description (e.g. Groceries)" required class="apple-input" />
+                </div>
+                <div class="w-full sm:w-28">
+                    <input type="text" id="amount" placeholder="Amount" required class="apple-input" />
+                </div>
+                <div class="w-full sm:w-36">
+                    <select id="category" class="apple-select">
+                        <option value="income">💵 Income</option>
+                        <option value="food">🍔 Food</option>
+                        <option value="transport">🚗 Transport</option>
+                        <option value="shopping">🛍️ Shopping</option>
+                        <option value="bills">📄 Bills</option>
+                        <option value="health">💊 Health</option>
+                        <option value="entertainment">🎬 Entertainment</option>
+                        <option value="other">📦 Other</option>
+                    </select>
+                </div>
+                <div class="w-full sm:w-28">
+                    <select id="type" class="apple-select">
+                        <option value="expense">Expense</option>
+                        <option value="income">Income</option>
+                    </select>
+                </div>
+                <button type="button" id="addBtn" class="fab-add ripple w-full sm:w-auto">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add
+                </button>
+            </div>
+            <!-- error toast -->
+            <div id="errorToast" class="toast-error mt-3 hidden">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span id="errorMessage">Invalid amount</span>
+            </div>
+        </div>
+
+        <!-- transaction list -->
+        <div class="glass-card p-5 sm:p-6 elevation-2">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wider flex items-center gap-2">
+                    <span>📋</span> Transactions
+                </h2>
+                <span id="txCount" class="text-xs font-medium text-gray-500 bg-gray-100/60 px-3 py-1 rounded-full">0</span>
+            </div>
+
+            <div id="transactionList" class="tx-list space-y-2 pr-1 max-h-[400px] overflow-y-auto">
+                <div id="emptyState" class="flex flex-col items-center justify-center py-12 text-gray-400">
+                    <svg class="w-16 h-16 mb-3 stroke-gray-300/60" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <p class="text-sm font-medium text-gray-400">No transactions yet</p>
+                    <p class="text-xs text-gray-400/70 mt-0.5">Add your first income or expense above</p>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-center text-xs text-gray-400/70 mt-5 flex items-center justify-center gap-1.5">
+            <span>💾</span> Auto‑saved in your browser
+        </p>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ----- state -----
+            let transactions = [];
+            let saveTimeout = null;
+
+            // ----- DOM refs -----
+            const container = document.getElementById('transactionForm'); // now a div
+            const addBtn = document.getElementById('addBtn');
+            const descInput = document.getElementById('description');
+            const amountInput = document.getElementById('amount');
+            const categorySelect = document.getElementById('category');
+            const typeSelect = document.getElementById('type');
+            const listEl = document.getElementById('transactionList');
+            const emptyState = document.getElementById('emptyState');
+            const balanceDisplay = document.getElementById('balanceDisplay');
+            const incomeDisplay = document.getElementById('incomeDisplay');
+            const expenseDisplay = document.getElementById('expenseDisplay');
+            const txCount = document.getElementById('txCount');
+            const resetBtn = document.getElementById('resetBtn');
+            const saveIndicator = document.getElementById('saveIndicator');
+            const errorToast = document.getElementById('errorToast');
+            const errorMessage = document.getElementById('errorMessage');
+
+            // ----- helpers -----
+            function formatCurrency(amount) {
+                return '$' + Math.abs(amount).toFixed(2);
+            }
+
+            function getChipClass(cat) {
+                const map = {
+                    income: 'chip-income',
+                    food: 'chip-food',
+                    transport: 'chip-transport',
+                    shopping: 'chip-shopping',
+                    bills: 'chip-bills',
+                    health: 'chip-health',
+                    entertainment: 'chip-entertainment',
+                    other: 'chip-other'
+                };
+                return map[cat] || 'chip-other';
+            }
+
+            function getCategoryEmoji(cat) {
+                const map = {
+                    income: '💵',
+                    food: '🍔',
+                    transport: '🚗',
+                    shopping: '🛍️',
+                    bills: '📄',
+                    health: '💊',
+                    entertainment: '🎬',
+                    other: '📦'
+                };
+                return map[cat] || '📦';
+            }
+
+            // ----- save indicator -----
+            function showSaved() {
+                saveIndicator.classList.add('show');
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    saveIndicator.classList.remove('show');
+                }, 1200);
+            }
+
+            function showError(msg) {
+                errorMessage.textContent = msg || 'Invalid input';
+                errorToast.classList.remove('hidden');
+                setTimeout(() => {
+                    errorToast.classList.add('hidden');
+                }, 3000);
+            }
+
+            // ----- storage with logging -----
+            function loadFromStorage() {
+                try {
+                    const data = localStorage.getItem('budgetTransactions');
+                    console.log('[Budget] loadFromStorage: raw data =', data);
+                    if (data) {
+                        const parsed = JSON.parse(data);
+                        if (Array.isArray(parsed)) {
+                            transactions = parsed;
+                            console.log('[Budget] loadFromStorage: loaded', transactions.length, 'transactions');
+                            return;
+                        }
+                    }
+                    transactions = [];
+                    console.log('[Budget] loadFromStorage: no data, initialized empty');
+                } catch (err) {
+                    console.error('[Budget] loadFromStorage error:', err);
+                    transactions = [];
+                }
+            }
+
+            function saveToStorage() {
+                try {
+                    const json = JSON.stringify(transactions);
+                    localStorage.setItem('budgetTransactions', json);
+                    console.log('[Budget] saveToStorage: saved', transactions.length, 'transactions');
+                    showSaved();
+                } catch (err) {
+                    console.error('[Budget] saveToStorage error:', err);
+                    showError('Failed to save data: ' + err.message);
+                }
+            }
+
+            // ----- render -----
+            function render() {
+                const sorted = [...transactions].sort((a, b) => b.id - a.id);
+
+                let totalIncome = 0;
+                let totalExpense = 0;
+                transactions.forEach(tx => {
+                    const amt = Number(tx.amount) || 0;
+                    if (tx.type === 'income') {
+                        totalIncome += amt;
+                    } else {
+                        totalExpense += amt;
+                    }
+                });
+                const balance = totalIncome - totalExpense;
+
+                balanceDisplay.textContent = formatCurrency(balance);
+                incomeDisplay.textContent = formatCurrency(totalIncome);
+                expenseDisplay.textContent = formatCurrency(totalExpense);
+                txCount.textContent = transactions.length;
+
+                listEl.innerHTML = '';
+                if (transactions.length === 0) {
+                    listEl.appendChild(emptyState);
+                    return;
+                }
+
+                sorted.forEach((tx, index) => {
+                    const isIncome = tx.type === 'income';
+                    const sign = isIncome ? '+' : '−';
+                    const colorClass = isIncome ? 'text-emerald-600' : 'text-rose-600';
+                    const chipClass = getChipClass(tx.category);
+                    const emoji = getCategoryEmoji(tx.category);
+
+                    const div = document.createElement('div');
+                    div.className = 'tx-item fade-slide';
+                    div.style.animationDelay = (index * 20) + 'ms';
+
+                    div.innerHTML = `
+                            <div class="flex items-center gap-3 min-w-0 flex-1">
+                                <span class="text-lg">${isIncome ? '📈' : '📉'}</span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-medium text-gray-800 truncate">${escapeHtml(tx.description || 'Untitled')}</p>
+                                    <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                                        <span class="text-sm font-semibold ${colorClass}">${sign}${formatCurrency(tx.amount)}</span>
+                                        <span class="text-gray-300 text-xs">·</span>
+                                        <span class="chip ${chipClass} chip-sm">
+                                            ${emoji} ${tx.category}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="delete-btn-apple" data-id="${tx.id}" aria-label="Delete">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        `;
+
+                    const delBtn = div.querySelector('.delete-btn-apple');
+                    delBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const id = Number(this.dataset.id);
+                        deleteTransaction(id);
+                    });
+
+                    listEl.appendChild(div);
+                });
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            // ----- CRUD -----
+            function addTransaction(description, amount, category, type) {
+                const tx = {
+                    id: Date.now() + Math.floor(Math.random() * 1000),
+                    description: description.trim(),
+                    amount: Math.abs(Number(amount)),
+                    category: category,
+                    type: type,
+                    createdAt: new Date().toISOString()
+                };
+                transactions.push(tx);
+                saveToStorage();
+                render();
+            }
+
+            function deleteTransaction(id) {
+                transactions = transactions.filter(tx => tx.id !== id);
+                saveToStorage();
+                render();
+            }
+
+            function resetAll() {
+                if (transactions.length === 0) return;
+                if (confirm('Delete all transactions?')) {
+                    transactions = [];
+                    saveToStorage();
+                    render();
+                }
+            }
+
+            // ----- parse amount (handles commas, currency symbols) -----
+            function parseAmount(raw) {
+                if (!raw) return NaN;
+                let cleaned = raw.replace(/[^0-9.\-]/g, '');
+                const parts = cleaned.split('.');
+                if (parts.length > 2) {
+                    cleaned = parts[0] + '.' + parts.slice(1).join('');
+                }
+                const num = Number(cleaned);
+                return isNaN(num) ? NaN : num;
+            }
+
+            // ----- handler for add button (no form submission) -----
+            function handleAdd() {
+                const description = descInput.value.trim();
+                const amountRaw = amountInput.value.trim();
+                const category = categorySelect.value;
+                const type = typeSelect.value;
+
+                if (!description) {
+                    descInput.focus();
+                    showError('Please enter a description');
+                    return;
+                }
+
+                const amount = parseAmount(amountRaw);
+                if (isNaN(amount) || amount <= 0) {
+                    amountInput.focus();
+                    amountInput.select();
+                    showError('Please enter a valid positive amount');
+                    return;
+                }
+
+                addTransaction(description, amount, category, type);
+                // reset fields (but keep selects as they are)
+                descInput.value = '';
+                amountInput.value = '';
+                descInput.focus();
+                errorToast.classList.add('hidden');
+            }
+
+            // ----- init -----
+            function init() {
+                loadFromStorage();
+                render();
+
+                // attach click to add button
+                addBtn.addEventListener('click', handleAdd);
+
+                // also allow Enter key on inputs to trigger add
+                const inputs = [descInput, amountInput];
+                inputs.forEach(inp => {
+                    inp.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAdd();
+                        }
+                    });
+                });
+
+                resetBtn.addEventListener('click', resetAll);
+
+                // auto‑sync category when type changes
+                typeSelect.addEventListener('change', function() {
+                    if (this.value === 'income') {
+                        categorySelect.value = 'income';
+                    } else {
+                        if (categorySelect.value === 'income') {
+                            categorySelect.value = 'other';
+                        }
+                    }
+                });
+
+                categorySelect.addEventListener('change', function() {
+                    if (this.value === 'income') {
+                        typeSelect.value = 'income';
+                    }
+                });
+
+                // extra save before unload
+                window.addEventListener('beforeunload', function() {
+                    saveToStorage();
+                });
+
+                console.log('[Budget] initialized, transactions:', transactions.length);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
+
+</body>
+
+</html>

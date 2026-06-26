@@ -1,0 +1,2698 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebOS – Persistent</title>
+    <!-- (CSS unchanged from the previous persistent version – same styles) -->
+    <style>
+         :root {
+            --bg: #0a0a0f;
+            --surface: #14141f;
+            --surface2: #1a1a2e;
+            --surface3: #1f1f35;
+            --text: #d0d0e0;
+            --text2: #a0a0b8;
+            --accent: #6ec6f8;
+            --accent2: #4aa8e0;
+            --danger: #f0626e;
+            --success: #5cdb8b;
+            --warning: #f0c060;
+            --border: #2a2a3a;
+            --taskbar: #0d0d18;
+            --window-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            --titlebar: #161625;
+            --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --mono: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+            --radius: 8px;
+            --radius-sm: 4px;
+            --transition: 0.2s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font);
+            background: #000;
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: default;
+        }
+        
+        #boot-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: #000010;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: var(--mono);
+            transition: opacity 0.6s ease;
+        }
+        
+        #boot-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        #boot-log {
+            color: #4a8;
+            font-size: 13px;
+            line-height: 1.6;
+            max-height: 300px;
+            overflow: hidden;
+            width: 600px;
+            text-align: left;
+            white-space: pre-wrap;
+            padding: 20px;
+        }
+        
+        #boot-logo {
+            margin-top: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--accent);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            text-shadow: 0 0 30px rgba(110, 198, 248, 0.6);
+        }
+        
+        #boot-logo.visible {
+            opacity: 1;
+        }
+        
+        #boot-progress {
+            margin-top: 16px;
+            width: 200px;
+            height: 4px;
+            background: #1a1a30;
+            border-radius: 2px;
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        
+        #boot-progress.visible {
+            opacity: 1;
+        }
+        
+        #boot-progress-bar {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            border-radius: 2px;
+            transition: width 0.8s ease;
+        }
+        
+        #desktop {
+            position: fixed;
+            inset: 0;
+            bottom: 48px;
+            background: radial-gradient(ellipse at 30% 20%, #1a2a3a 0%, #0a0a14 60%, #050510 100%);
+            z-index: 0;
+        }
+        
+        #desktop-icons {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 1;
+        }
+        
+        .desktop-icon {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--text);
+            font-size: 13px;
+            width: 180px;
+            border: 1px solid transparent;
+        }
+        
+        .desktop-icon:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+        
+        .desktop-icon:active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .desktop-icon .icon-img {
+            font-size: 28px;
+            width: 36px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        
+        .desktop-icon .icon-label {
+            font-size: 12px;
+            line-height: 1.3;
+        }
+        
+        #taskbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 48px;
+            background: var(--taskbar);
+            z-index: 9000;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            gap: 4px;
+            border-top: 1px solid var(--border);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        
+        #start-btn {
+            width: 40px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-size: 20px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        #start-btn:hover,
+        #start-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        #taskbar-apps {
+            display: flex;
+            gap: 3px;
+            flex: 1;
+            overflow-x: auto;
+            align-items: center;
+            height: 100%;
+        }
+        
+        .taskbar-app {
+            padding: 6px 14px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text2);
+            transition: var(--transition);
+            white-space: nowrap;
+            border: 1px solid transparent;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        
+        .taskbar-app:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .taskbar-app.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .taskbar-app .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+        }
+        
+        #taskbar-clock {
+            color: var(--text2);
+            font-size: 12px;
+            padding: 0 12px;
+            flex-shrink: 0;
+            font-family: var(--mono);
+        }
+        
+        #taskbar-tray {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding-right: 4px;
+            flex-shrink: 0;
+        }
+        
+        #start-menu {
+            position: fixed;
+            bottom: 52px;
+            left: 8px;
+            width: 280px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            z-index: 8999;
+            box-shadow: var(--window-shadow);
+            display: none;
+            overflow: hidden;
+            animation: slideUp 0.2s ease;
+        }
+        
+        #start-menu.open {
+            display: block;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        #start-menu .menu-section {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        #start-menu .menu-section:last-child {
+            border-bottom: none;
+        }
+        
+        #start-menu .menu-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: var(--transition);
+            color: var(--text);
+        }
+        
+        #start-menu .menu-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        #start-menu .menu-item .mi-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+        
+        #start-menu .menu-label {
+            padding: 6px 16px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text2);
+        }
+        
+        #windows-container {
+            position: fixed;
+            inset: 0;
+            bottom: 48px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .window {
+            position: absolute;
+            min-width: 280px;
+            min-height: 180px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--window-shadow);
+            display: flex;
+            flex-direction: column;
+            pointer-events: all;
+            overflow: hidden;
+            transition: box-shadow 0.15s ease;
+        }
+        
+        .window.focused {
+            border-color: #3a3a55;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(110, 198, 248, 0.15);
+            z-index: 500 !important;
+        }
+        
+        .window.maximized {
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 0 !important;
+            min-width: 0;
+            min-height: 0;
+        }
+        
+        .window.minimized {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.9);
+            transition: all 0.25s ease;
+        }
+        
+        .window-titlebar {
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            height: 34px;
+            background: var(--titlebar);
+            cursor: grab;
+            flex-shrink: 0;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .window-titlebar:active {
+            cursor: grabbing;
+        }
+        
+        .window-title {
+            flex: 1;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text2);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            pointer-events: none;
+        }
+        
+        .window-controls {
+            display: flex;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+        
+        .win-ctrl {
+            width: 28px;
+            height: 24px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: transparent;
+            color: var(--text2);
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+        
+        .win-ctrl:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+        }
+        
+        .win-ctrl.close:hover {
+            background: var(--danger);
+            color: #fff;
+        }
+        
+        .window-content {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+            background: var(--surface2);
+        }
+        
+        .resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 18px;
+            height: 18px;
+            cursor: nwse-resize;
+            z-index: 10;
+            background: transparent;
+        }
+        
+        .resize-handle::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid #555;
+            border-bottom: 2px solid #555;
+        }
+        
+        .terminal-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: #0a0a14;
+            font-family: var(--mono);
+            font-size: 13px;
+        }
+        
+        .terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #c8d8e8;
+            line-height: 1.5;
+        }
+        
+        .terminal-output .prompt-line {
+            color: #6ec6f8;
+        }
+        
+        .terminal-output .cmd-echo {
+            color: #e0e0e0;
+        }
+        
+        .terminal-output .error {
+            color: #f0626e;
+        }
+        
+        .terminal-output .success {
+            color: #5cdb8b;
+        }
+        
+        .terminal-output .info {
+            color: #f0c060;
+        }
+        
+        .terminal-input-line {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            background: #0d0d1a;
+            border-top: 1px solid #1a1a30;
+        }
+        
+        .terminal-prompt {
+            color: #6ec6f8;
+            font-family: var(--mono);
+            font-size: 13px;
+            white-space: nowrap;
+            margin-right: 4px;
+        }
+        
+        .terminal-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #e0e0e0;
+            font-family: var(--mono);
+            font-size: 13px;
+            outline: none;
+            caret-color: #6ec6f8;
+        }
+        
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .editor-statusbar {
+            padding: 4px 12px;
+            font-size: 11px;
+            background: var(--surface3);
+            color: var(--text2);
+            border-top: 1px solid var(--border);
+            font-family: var(--mono);
+            display: flex;
+            gap: 16px;
+        }
+        
+        .editor-textarea {
+            flex: 1;
+            background: #0d0d18;
+            color: #d0d8e8;
+            border: none;
+            padding: 14px;
+            font-family: var(--mono);
+            font-size: 13px;
+            resize: none;
+            outline: none;
+            line-height: 1.6;
+            tab-size: 4;
+        }
+        
+        .calc-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 10px;
+            gap: 8px;
+        }
+        
+        .calc-display {
+            background: #0d0d18;
+            color: #e0e0e0;
+            font-family: var(--mono);
+            font-size: 24px;
+            padding: 16px;
+            text-align: right;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            min-height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            overflow: hidden;
+        }
+        
+        .calc-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            flex: 1;
+        }
+        
+        .calc-btn {
+            background: var(--surface3);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 16px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+        
+        .calc-btn:hover {
+            background: #2a2a40;
+        }
+        
+        .calc-btn:active {
+            background: #353550;
+            transform: scale(0.96);
+        }
+        
+        .calc-btn.op {
+            background: #1a2a3a;
+            color: var(--accent);
+            font-weight: bold;
+        }
+        
+        .calc-btn.equals {
+            background: var(--accent2);
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        .calc-btn.clear {
+            background: #3a1a1a;
+            color: var(--danger);
+        }
+        
+        .explorer-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .explorer-nav {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            background: var(--surface3);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .explorer-nav button {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 5px 10px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 12px;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+        
+        .explorer-nav button:hover {
+            background: #2a2a40;
+        }
+        
+        .explorer-path {
+            flex: 1;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text2);
+            padding: 4px 8px;
+            background: #0d0d18;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+        
+        .explorer-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px;
+        }
+        
+        .explorer-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+            font-size: 13px;
+        }
+        
+        .explorer-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+        
+        .explorer-item .ex-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+        
+        .explorer-empty {
+            padding: 20px;
+            text-align: center;
+            color: var(--text2);
+            font-style: italic;
+        }
+        
+        .sysmon-container {
+            padding: 16px;
+            font-family: var(--mono);
+            font-size: 12px;
+            line-height: 1.8;
+            color: var(--text);
+        }
+        
+        .sysmon-container h3 {
+            color: var(--accent);
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .sysmon-bar {
+            height: 10px;
+            background: #1a1a30;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 4px 0 12px;
+        }
+        
+        .sysmon-bar-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+        
+         ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+         ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+         ::-webkit-scrollbar-thumb {
+            background: #2a2a40;
+            border-radius: 3px;
+        }
+        
+         ::-webkit-scrollbar-thumb:hover {
+            background: #3a3a55;
+        }
+        
+        #notification-area {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 9500;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        
+        .notification {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            animation: notifIn 0.3s ease, notifOut 0.3s ease 2.5s forwards;
+            pointer-events: all;
+            box-shadow: var(--window-shadow);
+            max-width: 320px;
+        }
+        
+        @keyframes notifIn {
+            from {
+                opacity: 0;
+                transform: translateX(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes notifOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(40px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="boot-screen">
+        <div id="boot-log"></div>
+        <div id="boot-logo">◆ WebOS</div>
+        <div id="boot-progress">
+            <div id="boot-progress-bar"></div>
+        </div>
+    </div>
+    <div id="desktop" style="display:none;">
+        <div id="desktop-icons">
+            <div class="desktop-icon" data-app="file-explorer"><span class="icon-img">📁</span><span class="icon-label">File Explorer</span></div>
+            <div class="desktop-icon" data-app="terminal"><span class="icon-img">💻</span><span class="icon-label">Terminal</span></div>
+            <div class="desktop-icon" data-app="text-editor"><span class="icon-img">📝</span><span class="icon-label">Text Editor</span></div>
+            <div class="desktop-icon" data-app="calculator"><span class="icon-img">🔢</span><span class="icon-label">Calculator</span></div>
+            <div class="desktop-icon" data-app="system-monitor"><span class="icon-img">📊</span><span class="icon-label">System Monitor</span></div>
+        </div>
+    </div>
+    <div id="taskbar" style="display:none;">
+        <button id="start-btn" title="Start Menu">◆</button>
+        <div id="taskbar-apps"></div>
+        <div id="taskbar-tray"><span id="taskbar-clock">00:00</span></div>
+    </div>
+    <div id="start-menu">
+        <div class="menu-section">
+            <div class="menu-label">Applications</div>
+            <div class="menu-item" data-app="terminal"><span class="mi-icon">💻</span> Terminal</div>
+            <div class="menu-item" data-app="file-explorer"><span class="mi-icon">📁</span> File Explorer</div>
+            <div class="menu-item" data-app="text-editor"><span class="mi-icon">📝</span> Text Editor</div>
+            <div class="menu-item" data-app="calculator"><span class="mi-icon">🔢</span> Calculator</div>
+            <div class="menu-item" data-app="system-monitor"><span class="mi-icon">📊</span> System Monitor</div>
+        </div>
+        <div class="menu-section">
+            <div class="menu-label">System</div>
+            <div class="menu-item" data-app="terminal"><span class="mi-icon">⚙️</span> Run Command</div>
+            <div class="menu-item" id="menu-shutdown"><span class="mi-icon">⏻</span> Shut Down</div>
+        </div>
+    </div>
+    <div id="windows-container"></div>
+    <div id="notification-area"></div>
+
+    <script>
+        (function() {
+            // ==================== KERNEL ====================
+            const Kernel = {
+                version: '1.0.0',
+                hostname: 'webos',
+                user: 'user',
+                uptime: 0,
+                bootTime: null,
+                pidCounter: 1,
+
+                init() {
+                    this.bootTime = Date.now();
+                    this.startUptimeCounter();
+                },
+                startUptimeCounter() {
+                    setInterval(() => {
+                        this.uptime = Math.floor((Date.now() - this.bootTime) / 1000);
+                    }, 1000);
+                },
+                getUptimeString() {
+                    const s = this.uptime;
+                    const d = Math.floor(s / 86400);
+                    const h = Math.floor((s % 86400) / 3600);
+                    const m = Math.floor((s % 3600) / 60);
+                    const sec = s % 60;
+                    let parts = [];
+                    if (d > 0) parts.push(`${d}d`);
+                    if (h > 0) parts.push(`${h}h`);
+                    if (m > 0) parts.push(`${m}m`);
+                    parts.push(`${sec}s`);
+                    return parts.join(' ');
+                },
+                nextPid() {
+                    return this.pidCounter++;
+                },
+            };
+
+            // ==================== FILE SYSTEM ====================
+            const FileSystem = {
+                root: null,
+                init(defaultStructure = true) {
+                    if (!this.root && defaultStructure) {
+                        this.root = {
+                            type: 'dir',
+                            name: '/',
+                            children: {},
+                            parent: null,
+                            createdAt: Date.now(),
+                        };
+                        this.mkdir('/home');
+                        this.mkdir('/home/user');
+                        this.mkdir('/home/user/Documents');
+                        this.mkdir('/home/user/Pictures');
+                        this.mkdir('/home/user/Downloads');
+                        this.mkdir('/etc');
+                        this.mkdir('/bin');
+                        this.mkdir('/usr');
+                        this.mkdir('/usr/share');
+                        this.mkdir('/tmp');
+                        this.mkdir('/var');
+                        this.writeFile('/home/user/welcome.txt', 'Welcome to WebOS!\n\nThis is a browser-based operating system simulation.\nFeel free to explore the terminal, edit files, and more!\n\nTry the "help" command in the terminal to see available commands.\n');
+                        this.writeFile('/home/user/Documents/notes.txt', '# My Notes\n\n- WebOS is pretty cool\n- The terminal supports many Unix-like commands\n- Files are stored in a virtual filesystem\n');
+                        this.writeFile('/home/user/Documents/todo.txt', 'TODO List:\n[ ] Learn more about WebOS\n[ ] Try all terminal commands\n[ ] Create something awesome\n[x] Boot up the system\n');
+                        this.writeFile('/etc/os-release', 'NAME=WebOS\nVERSION=1.0.0\nID=webos\nPRETTY_NAME="WebOS 1.0"\nHOME_URL=https://webos.example.com\n');
+                        this.writeFile('/usr/share/motd', 'Welcome to WebOS! Type "help" for available commands.\n');
+                    }
+                },
+                resolvePath(path, currentDir = '/home/user') {
+                    if (!path) return null;
+                    if (path === '/') return this.root;
+                    let parts;
+                    if (path.startsWith('/')) {
+                        parts = path.split('/').filter(p => p);
+                        let node = this.root;
+                        for (const part of parts) {
+                            if (!node || node.type !== 'dir' || !node.children[part]) return null;
+                            node = node.children[part];
+                        }
+                        return node;
+                    } else {
+                        let base = this.resolvePath(currentDir);
+                        if (!base) return null;
+                        parts = path.split('/').filter(p => p);
+                        let node = base;
+                        for (const part of parts) {
+                            if (part === '..') node = node.parent || this.root;
+                            else if (part === '.') continue;
+                            else {
+                                if (!node || node.type !== 'dir' || !node.children[part]) return null;
+                                node = node.children[part];
+                            }
+                        }
+                        return node;
+                    }
+                },
+                getParentPath(path) {
+                    if (path === '/') return '/';
+                    const parts = path.split('/').filter(p => p);
+                    if (parts.length <= 1) return '/';
+                    parts.pop();
+                    return '/' + parts.join('/');
+                },
+                mkdir(path) {
+                    const parentPath = this.getParentPath(path);
+                    const name = path.split('/').filter(p => p).pop();
+                    if (!name) return false;
+                    const parent = this.resolvePath(parentPath);
+                    if (!parent || parent.type !== 'dir') return false;
+                    if (parent.children[name]) return false;
+                    parent.children[name] = {
+                        type: 'dir',
+                        name,
+                        children: {},
+                        parent,
+                        createdAt: Date.now()
+                    };
+                    PersistenceManager.scheduleSave();
+                    return true;
+                },
+                writeFile(path, content) {
+                    const parentPath = this.getParentPath(path);
+                    const name = path.split('/').filter(p => p).pop();
+                    if (!name) return false;
+                    const parent = this.resolvePath(parentPath);
+                    if (!parent || parent.type !== 'dir') return false;
+                    parent.children[name] = {
+                        type: 'file',
+                        name,
+                        content,
+                        parent,
+                        createdAt: Date.now(),
+                        modifiedAt: Date.now(),
+                        size: content.length
+                    };
+                    PersistenceManager.scheduleSave();
+                    return true;
+                },
+                readFile(path) {
+                    const node = this.resolvePath(path);
+                    return (node && node.type === 'file') ? node.content : null;
+                },
+                remove(path) {
+                    const node = this.resolvePath(path);
+                    if (!node || node === this.root) return false;
+                    if (node.type === 'dir' && Object.keys(node.children).length > 0) return false;
+                    const parent = node.parent;
+                    if (parent && parent.children[node.name]) {
+                        delete parent.children[node.name];
+                        PersistenceManager.scheduleSave();
+                        return true;
+                    }
+                    return false;
+                },
+                listDir(path) {
+                    const node = this.resolvePath(path);
+                    if (!node || node.type !== 'dir') return null;
+                    return Object.keys(node.children).map(name => ({
+                        name,
+                        type: node.children[name].type,
+                        size: node.children[name].size || 0,
+                        modifiedAt: node.children[name].modifiedAt || node.children[name].createdAt,
+                    })).sort((a, b) => {
+                        if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+                        return a.name.localeCompare(b.name);
+                    });
+                },
+                exists(path) {
+                    return this.resolvePath(path) !== null;
+                },
+                isDir(path) {
+                    const n = this.resolvePath(path);
+                    return n && n.type === 'dir';
+                },
+                isFile(path) {
+                    const n = this.resolvePath(path);
+                    return n && n.type === 'file';
+                },
+            };
+
+            // ==================== PROCESS MANAGER ====================
+            const ProcessManager = {
+                processes: [],
+                register(name, type = 'application', windowId = null) {
+                    const pid = Kernel.nextPid();
+                    this.processes.push({
+                        pid,
+                        name,
+                        type,
+                        windowId,
+                        status: 'running',
+                        createdAt: Date.now()
+                    });
+                    return pid;
+                },
+                unregister(pid) {
+                    const idx = this.processes.findIndex(p => p.pid === pid);
+                    if (idx >= 0) {
+                        this.processes.splice(idx, 1);
+                        return true;
+                    }
+                    return false;
+                },
+                unregisterByWindowId(windowId) {
+                    const idx = this.processes.findIndex(p => p.windowId === windowId);
+                    if (idx >= 0) {
+                        this.processes.splice(idx, 1);
+                        return true;
+                    }
+                    return false;
+                },
+                list() {
+                    return [...this.processes];
+                },
+                kill(pid) {
+                    const proc = this.processes.find(p => p.pid === pid);
+                    if (!proc) return false;
+                    if (proc.windowId) WindowManager.closeWindow(proc.windowId);
+                    this.unregister(pid);
+                    return true;
+                },
+                registerWithPid(pid, name, type, windowId) {
+                    this.processes.push({
+                        pid,
+                        name,
+                        type,
+                        windowId,
+                        status: 'running',
+                        createdAt: Date.now()
+                    });
+                },
+            };
+
+            // ==================== WINDOW MANAGER ====================
+            const WindowManager = {
+                windows: new Map(),
+                windowCounter: 0,
+                focusedWindowId: null,
+                zIndexBase: 100,
+                dragState: null,
+                resizeState: null,
+
+                createWindow(title, contentHTML, options = {}) {
+                    const id = options.id || `win-${++this.windowCounter}`;
+                    if (options.id) {
+                        const num = parseInt(id.split('-')[1]) || 0;
+                        if (num >= this.windowCounter) this.windowCounter = num;
+                    }
+                    const defaultX = 80 + (this.windowCounter - 1) * 30;
+                    const defaultY = 50 + (this.windowCounter - 1) * 25;
+                    const width = options.width || 620;
+                    const height = options.height || 420;
+                    const x = options.x !== undefined ? options.x : Math.min(defaultX, window.innerWidth - width - 40);
+                    const y = options.y !== undefined ? options.y : Math.min(defaultY, window.innerHeight - height - 100);
+
+                    const winEl = document.createElement('div');
+                    winEl.className = 'window';
+                    winEl.id = id;
+                    winEl.style.left = x + 'px';
+                    winEl.style.top = y + 'px';
+                    winEl.style.width = width + 'px';
+                    winEl.style.height = height + 'px';
+                    winEl.style.zIndex = ++this.zIndexBase;
+                    winEl.dataset.app = options.appType || 'unknown';
+                    winEl.innerHTML = `
+                        <div class="window-titlebar" data-win-id="${id}">
+                            <span class="window-title">${title}</span>
+                            <div class="window-controls">
+                                <button class="win-ctrl minimize" data-action="minimize">─</button>
+                                <button class="win-ctrl maximize" data-action="maximize">□</button>
+                                <button class="win-ctrl close" data-action="close">✕</button>
+                            </div>
+                        </div>
+                        <div class="window-content">${contentHTML}</div>
+                        <div class="resize-handle" data-win-id="${id}"></div>
+                    `;
+                    document.getElementById('windows-container').appendChild(winEl);
+
+                    const winData = {
+                        id,
+                        el: winEl,
+                        title,
+                        x,
+                        y,
+                        width,
+                        height,
+                        minimized: false,
+                        maximized: false,
+                        prevBounds: null,
+                        appType: options.appType || 'unknown',
+                        pid: options.pid || null,
+                    };
+                    this.windows.set(id, winData);
+                    this.setupWindowEvents(winEl, id);
+                    this.focusWindow(id);
+                    this.updateTaskbar();
+
+                    if (!options.skipAnimation) {
+                        winEl.style.transform = 'scale(0.92)';
+                        winEl.style.opacity = '0';
+                        winEl.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+                        requestAnimationFrame(() => {
+                            winEl.style.transform = 'scale(1)';
+                            winEl.style.opacity = '1';
+                            setTimeout(() => {
+                                winEl.style.transition = '';
+                            }, 200);
+                        });
+                    }
+
+                    PersistenceManager.scheduleSave();
+                    return id;
+                },
+
+                setupWindowEvents(winEl, id) {
+                    const titlebar = winEl.querySelector('.window-titlebar');
+                    titlebar.addEventListener('mousedown', (e) => {
+                        if (e.target.closest('.window-controls')) return;
+                        const winData = this.windows.get(id);
+                        if (!winData || winData.maximized) return;
+                        this.focusWindow(id);
+                        this.dragState = {
+                            id,
+                            startX: e.clientX,
+                            startY: e.clientY,
+                            origX: winData.x,
+                            origY: winData.y
+                        };
+                        e.preventDefault();
+                    });
+                    const resizeHandle = winEl.querySelector('.resize-handle');
+                    resizeHandle.addEventListener('mousedown', (e) => {
+                        const winData = this.windows.get(id);
+                        if (!winData || winData.maximized) return;
+                        this.focusWindow(id);
+                        this.resizeState = {
+                            id,
+                            startX: e.clientX,
+                            startY: e.clientY,
+                            origW: winData.width,
+                            origH: winData.height
+                        };
+                        e.preventDefault();
+                        e.stopPropagation();
+                    });
+                    winEl.querySelectorAll('.win-ctrl').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            const action = btn.dataset.action;
+                            if (action === 'close') this.closeWindow(id);
+                            else if (action === 'minimize') this.minimizeWindow(id);
+                            else if (action === 'maximize') this.toggleMaximize(id);
+                            e.stopPropagation();
+                        });
+                    });
+                    winEl.addEventListener('mousedown', () => this.focusWindow(id));
+                    titlebar.addEventListener('dblclick', (e) => {
+                        if (e.target.closest('.window-controls')) return;
+                        this.toggleMaximize(id);
+                    });
+                },
+
+                focusWindow(id) {
+                    if (this.focusedWindowId === id) return;
+                    if (this.focusedWindowId) {
+                        const prev = this.windows.get(this.focusedWindowId);
+                        if (prev && prev.el) prev.el.classList.remove('focused');
+                    }
+                    this.focusedWindowId = id;
+                    const winData = this.windows.get(id);
+                    if (winData && winData.el) {
+                        winData.el.classList.remove('minimized');
+                        winData.minimized = false;
+                        winData.el.style.zIndex = ++this.zIndexBase;
+                        winData.el.classList.add('focused');
+                    }
+                    this.updateTaskbar();
+                },
+
+                minimizeWindow(id) {
+                    const winData = this.windows.get(id);
+                    if (!winData) return;
+                    winData.minimized = true;
+                    winData.el.classList.add('minimized');
+                    if (this.focusedWindowId === id) {
+                        this.focusedWindowId = null;
+                        winData.el.classList.remove('focused');
+                        for (const [wid, wd] of this.windows) {
+                            if (wid !== id && !wd.minimized) {
+                                this.focusWindow(wid);
+                                break;
+                            }
+                        }
+                    }
+                    this.updateTaskbar();
+                    PersistenceManager.scheduleSave();
+                },
+
+                restoreWindow(id) {
+                    const winData = this.windows.get(id);
+                    if (!winData) return;
+                    winData.minimized = false;
+                    winData.el.classList.remove('minimized');
+                    this.focusWindow(id);
+                },
+
+                toggleMaximize(id) {
+                    const winData = this.windows.get(id);
+                    if (!winData) return;
+                    if (winData.maximized) {
+                        winData.maximized = false;
+                        winData.el.classList.remove('maximized');
+                        if (winData.prevBounds) {
+                            winData.el.style.left = winData.prevBounds.x + 'px';
+                            winData.el.style.top = winData.prevBounds.y + 'px';
+                            winData.el.style.width = winData.prevBounds.width + 'px';
+                            winData.el.style.height = winData.prevBounds.height + 'px';
+                            winData.x = winData.prevBounds.x;
+                            winData.y = winData.prevBounds.y;
+                            winData.width = winData.prevBounds.width;
+                            winData.height = winData.prevBounds.height;
+                        }
+                    } else {
+                        winData.prevBounds = {
+                            x: winData.x,
+                            y: winData.y,
+                            width: winData.width,
+                            height: winData.height
+                        };
+                        winData.maximized = true;
+                        winData.el.classList.add('maximized');
+                    }
+                    this.focusWindow(id);
+                    PersistenceManager.scheduleSave();
+                },
+
+                closeWindow(id) {
+                    const winData = this.windows.get(id);
+                    if (!winData) return;
+                    if (winData.pid) ProcessManager.unregister(winData.pid);
+                    if (winData.appType === 'terminal' && terminalStates.has(id)) terminalStates.delete(id);
+                    if (winData.appType === 'text-editor' && editorStates.has(id)) editorStates.delete(id);
+                    winData.el.style.transition = 'transform 0.15s ease, opacity 0.15s ease';
+                    winData.el.style.transform = 'scale(0.9)';
+                    winData.el.style.opacity = '0';
+                    setTimeout(() => {
+                        if (winData.el.parentNode) winData.el.parentNode.removeChild(winData.el);
+                    }, 150);
+                    this.windows.delete(id);
+                    if (this.focusedWindowId === id) {
+                        this.focusedWindowId = null;
+                        const remaining = [...this.windows.values()].filter(w => !w.minimized);
+                        if (remaining.length > 0) this.focusWindow(remaining[remaining.length - 1].id);
+                    }
+                    this.updateTaskbar();
+                    PersistenceManager.scheduleSave();
+                },
+
+                updateTaskbar() {
+                    const container = document.getElementById('taskbar-apps');
+                    const allWindows = [...this.windows.values()].filter(w => !w.minimized);
+                    const minimizedWindows = [...this.windows.values()].filter(w => w.minimized);
+                    container.innerHTML = '';
+                    [...allWindows, ...minimizedWindows].forEach(winData => {
+                        const btn = document.createElement('div');
+                        btn.className = 'taskbar-app';
+                        if (!winData.minimized && this.focusedWindowId === winData.id) btn.classList.add('active');
+                        btn.innerHTML = winData.minimized ? winData.title : `<span class="dot"></span>${winData.title}`;
+                        btn.addEventListener('click', () => {
+                            if (winData.minimized) this.restoreWindow(winData.id);
+                            else if (this.focusedWindowId === winData.id) this.minimizeWindow(winData.id);
+                            else this.focusWindow(winData.id);
+                        });
+                        container.appendChild(btn);
+                    });
+                },
+
+                // ==== MISSING METHOD – MUST BE INCLUDED ====
+                getWindowById(id) {
+                    return this.windows.get(id) || null;
+                },
+            };
+
+            document.addEventListener('mousemove', (e) => {
+                if (WindowManager.dragState) {
+                    const ds = WindowManager.dragState;
+                    const winData = WindowManager.getWindowById(ds.id);
+                    if (winData && !winData.maximized) {
+                        const dx = e.clientX - ds.startX,
+                            dy = e.clientY - ds.startY;
+                        winData.el.style.left = Math.max(-100, ds.origX + dx) + 'px';
+                        winData.el.style.top = Math.max(0, ds.origY + dy) + 'px';
+                        winData.x = ds.origX + dx;
+                        winData.y = ds.origY + dy;
+                    }
+                }
+                if (WindowManager.resizeState) {
+                    const rs = WindowManager.resizeState;
+                    const winData = WindowManager.getWindowById(rs.id);
+                    if (winData && !winData.maximized) {
+                        winData.el.style.width = Math.max(280, rs.origW + e.clientX - rs.startX) + 'px';
+                        winData.el.style.height = Math.max(180, rs.origH + e.clientY - rs.startY) + 'px';
+                        winData.width = rs.origW + e.clientX - rs.startX;
+                        winData.height = rs.origH + e.clientY - rs.startY;
+                    }
+                }
+            });
+            document.addEventListener('mouseup', () => {
+                if (WindowManager.dragState || WindowManager.resizeState) {
+                    WindowManager.dragState = null;
+                    WindowManager.resizeState = null;
+                    PersistenceManager.scheduleSave();
+                }
+            });
+
+            // ==================== TERMINAL STATE ====================
+            const terminalStates = new Map();
+
+            function getTerminalState(windowId) {
+                if (!terminalStates.has(windowId)) {
+                    terminalStates.set(windowId, {
+                        history: [],
+                        historyIndex: -1,
+                        currentDir: '/home/user',
+                        outputLines: []
+                    });
+                }
+                return terminalStates.get(windowId);
+            }
+
+            // ==================== SHELL (same as before, just with PersistenceManager.scheduleSave() calls) ====================
+            function executeCommand(input, windowId) {
+                const state = getTerminalState(windowId);
+                const trimmed = input.trim();
+                if (!trimmed) return {
+                    output: '',
+                    type: 'empty'
+                };
+                state.history.push(trimmed);
+                state.historyIndex = state.history.length;
+                const parts = parseCommand(trimmed);
+                const cmd = parts[0].toLowerCase();
+                const args = parts.slice(1);
+                let result;
+                switch (cmd) {
+                    case 'help':
+                        result = {
+                            output: getHelpText(),
+                            type: 'info'
+                        };
+                        break;
+                    case 'clear':
+                        result = {
+                            output: '',
+                            type: 'clear'
+                        };
+                        break;
+                    case 'ls':
+                        result = cmdLs(args, state);
+                        break;
+                    case 'cd':
+                        result = cmdCd(args, state);
+                        break;
+                    case 'pwd':
+                        result = {
+                            output: state.currentDir,
+                            type: 'success'
+                        };
+                        break;
+                    case 'cat':
+                        result = cmdCat(args, state);
+                        break;
+                    case 'echo':
+                        result = {
+                            output: args.join(' '),
+                            type: 'cmd-echo'
+                        };
+                        break;
+                    case 'mkdir':
+                        result = cmdMkdir(args, state);
+                        break;
+                    case 'touch':
+                        result = cmdTouch(args, state);
+                        break;
+                    case 'rm':
+                        result = cmdRm(args, state);
+                        break;
+                    case 'write':
+                        result = cmdWrite(args, state);
+                        break;
+                    case 'date':
+                        result = {
+                            output: new Date().toString(),
+                            type: 'success'
+                        };
+                        break;
+                    case 'whoami':
+                        result = {
+                            output: Kernel.user,
+                            type: 'success'
+                        };
+                        break;
+                    case 'uname':
+                        result = cmdUname(args);
+                        break;
+                    case 'neofetch':
+                        result = {
+                            output: getNeofetch(),
+                            type: 'info'
+                        };
+                        break;
+                    case 'ps':
+                        result = cmdPs();
+                        break;
+                    case 'kill':
+                        result = cmdKill(args);
+                        break;
+                    case 'run':
+                        result = cmdRun(args, windowId);
+                        break;
+                    case 'lsblk':
+                        result = {
+                            output: 'NAME   TYPE   SIZE\nsda    disk   64G (virtual)\n  sda1 part   62G\n  sda2 part   2G',
+                            type: 'success'
+                        };
+                        break;
+                    case 'df':
+                        result = {
+                            output: 'Filesystem   Size  Used  Avail  Use%\n/           64G   12G   52G    19%\n/tmp        4G    0G    4G     0%',
+                            type: 'success'
+                        };
+                        break;
+                    case 'free':
+                        result = {
+                            output: '              total    used    free\nMem:         8192MB  1245MB  6947MB\nSwap:        2048MB     0MB  2048MB',
+                            type: 'success'
+                        };
+                        break;
+                    case 'uptime':
+                        result = {
+                            output: `up ${Kernel.getUptimeString()}`,
+                            type: 'success'
+                        };
+                        break;
+                    case 'cowsay':
+                        result = {
+                            output: cowsay(args.join(' ')),
+                            type: 'cmd-echo'
+                        };
+                        break;
+                    default:
+                        result = {
+                            output: `bash: ${cmd}: command not found. Type "help" for available commands.`,
+                            type: 'error'
+                        };
+                }
+                PersistenceManager.scheduleSave();
+                return result;
+            }
+
+            function parseCommand(input) {
+                const parts = [];
+                let current = '',
+                    inQuote = false,
+                    quoteChar = '';
+                for (const ch of input) {
+                    if (inQuote) {
+                        if (ch === quoteChar) inQuote = false;
+                        else current += ch;
+                    } else if (ch === '"' || ch === "'") {
+                        inQuote = true;
+                        quoteChar = ch;
+                    } else if (ch === ' ' || ch === '\t') {
+                        if (current) {
+                            parts.push(current);
+                            current = '';
+                        }
+                    } else current += ch;
+                }
+                if (current) parts.push(current);
+                return parts;
+            }
+
+            function resolveRelativePath(arg, state) {
+                if (arg.startsWith('/')) return arg;
+                if (arg === '~') return '/home/user';
+                if (arg.startsWith('~/')) return '/home/user/' + arg.slice(2);
+                const base = state.currentDir;
+                return base === '/' ? '/' + arg : base + '/' + arg;
+            }
+
+            function cmdLs(args, state) {
+                let targetPath = state.currentDir;
+                if (args.length > 0 && !args[0].startsWith('-')) targetPath = resolveRelativePath(args[0], state);
+                const showAll = args.includes('-a') || args.includes('-la') || args.includes('-al');
+                const longFormat = args.includes('-l') || args.includes('-la') || args.includes('-al');
+                const listing = FileSystem.listDir(targetPath);
+                if (!listing) return {
+                    output: `ls: cannot access '${targetPath}': No such directory`,
+                    type: 'error'
+                };
+                let filtered = showAll ? listing : listing.filter(f => !f.name.startsWith('.'));
+                if (longFormat) {
+                    let out = `total ${filtered.length}\n`;
+                    filtered.forEach(f => {
+                        const typeChar = f.type === 'dir' ? 'd' : '-';
+                        const sizeStr = String(f.size || 0).padStart(8);
+                        const dateStr = new Date(f.modifiedAt || Date.now()).toLocaleDateString();
+                        out += `${typeChar}rwxr-xr-x 1 user user ${sizeStr} ${dateStr} ${f.name}\n`;
+                    });
+                    return {
+                        output: out.trimEnd(),
+                        type: 'success'
+                    };
+                }
+                return {
+                    output: filtered.map(f => f.name).join('  ') || '(empty)',
+                    type: 'success'
+                };
+            }
+
+            function cmdCd(args, state) {
+                if (args.length === 0 || args[0] === '~') {
+                    state.currentDir = '/home/user';
+                    return {
+                        output: '',
+                        type: 'empty'
+                    };
+                }
+                const target = resolveRelativePath(args[0], state);
+                const node = FileSystem.resolvePath(target);
+                if (!node || node.type !== 'dir') return {
+                    output: `cd: '${args[0]}': No such directory`,
+                    type: 'error'
+                };
+                let pathParts = [],
+                    n = node;
+                while (n && n.name !== '/') {
+                    pathParts.unshift(n.name);
+                    n = n.parent;
+                }
+                state.currentDir = '/' + pathParts.join('/') || '/';
+                return {
+                    output: '',
+                    type: 'empty'
+                };
+            }
+
+            function cmdCat(args, state) {
+                if (!args.length) return {
+                    output: 'cat: missing operand',
+                    type: 'error'
+                };
+                const content = FileSystem.readFile(resolveRelativePath(args[0], state));
+                return content === null ? {
+                    output: `cat: '${args[0]}': No such file`,
+                    type: 'error'
+                } : {
+                    output: content,
+                    type: 'cmd-echo'
+                };
+            }
+
+            function cmdMkdir(args, state) {
+                if (!args.length) return {
+                    output: 'mkdir: missing operand',
+                    type: 'error'
+                };
+                const target = resolveRelativePath(args[0], state);
+                if (FileSystem.exists(target)) return {
+                    output: `mkdir: '${args[0]}': Already exists`,
+                    type: 'error'
+                };
+                return FileSystem.mkdir(target) ? {
+                    output: '',
+                    type: 'empty'
+                } : {
+                    output: `mkdir: failed`,
+                    type: 'error'
+                };
+            }
+
+            function cmdTouch(args, state) {
+                if (!args.length) return {
+                    output: 'touch: missing operand',
+                    type: 'error'
+                };
+                const target = resolveRelativePath(args[0], state);
+                if (FileSystem.exists(target)) {
+                    const node = FileSystem.resolvePath(target);
+                    if (node) node.modifiedAt = Date.now();
+                    return {
+                        output: '',
+                        type: 'empty'
+                    };
+                }
+                return FileSystem.writeFile(target, '') ? {
+                    output: '',
+                    type: 'empty'
+                } : {
+                    output: `touch: failed`,
+                    type: 'error'
+                };
+            }
+
+            function cmdRm(args, state) {
+                if (!args.length) return {
+                    output: 'rm: missing operand',
+                    type: 'error'
+                };
+                const recursive = args.includes('-r') || args.includes('-rf');
+                const force = args.includes('-f') || args.includes('-rf');
+                const targetArg = args.filter(a => !a.startsWith('-'))[0];
+                if (!targetArg) return {
+                    output: 'rm: missing operand',
+                    type: 'error'
+                };
+                const target = resolveRelativePath(targetArg, state);
+                const node = FileSystem.resolvePath(target);
+                if (!node) return force ? {
+                    output: '',
+                    type: 'empty'
+                } : {
+                    output: `rm: cannot remove '${targetArg}'`,
+                    type: 'error'
+                };
+                if (node.type === 'dir' && Object.keys(node.children).length > 0 && !recursive) return {
+                    output: `rm: directory not empty (use -r)`,
+                    type: 'error'
+                };
+                if (node.type === 'dir' && recursive) {
+                    function removeRec(n) {
+                        if (n.type === 'dir')
+                            for (const c of Object.keys(n.children)) removeRec(n.children[c]);
+                        if (n.parent.children[n.name]) delete n.parent.children[n.name];
+                    }
+                    removeRec(node);
+                    return {
+                        output: '',
+                        type: 'empty'
+                    };
+                }
+                return FileSystem.remove(target) ? {
+                    output: '',
+                    type: 'empty'
+                } : {
+                    output: `rm: failed`,
+                    type: 'error'
+                };
+            }
+
+            function cmdWrite(args, state) {
+                if (args.length < 2) return {
+                    output: 'write: usage: write <file> <content>',
+                    type: 'error'
+                };
+                const target = resolveRelativePath(args[0], state);
+                const content = args.slice(1).join(' ');
+                return FileSystem.writeFile(target, content) ? {
+                    output: `Wrote to ${args[0]}`,
+                    type: 'success'
+                } : {
+                    output: `write: failed`,
+                    type: 'error'
+                };
+            }
+
+            function cmdUname(args) {
+                return {
+                    output: args.includes('-a') ? `WebOS ${Kernel.hostname} ${Kernel.version} WebOS/1.0.0 x86_64 browser` : 'WebOS',
+                    type: 'success'
+                };
+            }
+
+            function cmdPs() {
+                const procs = ProcessManager.list();
+                if (!procs.length) return {
+                    output: 'No running processes.',
+                    type: 'info'
+                };
+                let out = 'PID   NAME              TYPE         STATUS\n────  ────────────────  ───────────  ───────\n';
+                procs.forEach(p => out += `${String(p.pid).padEnd(5)} ${p.name.padEnd(18)} ${p.type.padEnd(12)} ${p.status}\n`);
+                return {
+                    output: out.trimEnd(),
+                    type: 'success'
+                };
+            }
+
+            function cmdKill(args) {
+                if (!args.length) return {
+                    output: 'kill: missing PID',
+                    type: 'error'
+                };
+                const pid = parseInt(args[0]);
+                if (isNaN(pid)) return {
+                    output: `kill: invalid PID: ${args[0]}`,
+                    type: 'error'
+                };
+                return ProcessManager.kill(pid) ? {
+                    output: `Process ${pid} terminated.`,
+                    type: 'success'
+                } : {
+                    output: `kill: no process ${pid}`,
+                    type: 'error'
+                };
+            }
+
+            function cmdRun(args, windowId) {
+                if (!args.length) return {
+                    output: 'run: specify an app',
+                    type: 'error'
+                };
+                const map = {
+                    terminal: 'terminal',
+                    editor: 'text-editor',
+                    calculator: 'calculator',
+                    calc: 'calculator',
+                    explorer: 'file-explorer',
+                    sysmon: 'system-monitor'
+                };
+                const app = map[args[0].toLowerCase()];
+                if (!app) return {
+                    output: `run: unknown app '${args[0]}'`,
+                    type: 'error'
+                };
+                launchApp(app);
+                return {
+                    output: `Launched ${app}.`,
+                    type: 'success'
+                };
+            }
+
+            function getHelpText() {
+                return `╔══════════════════════════════════════════╗\n║         WebOS Shell Commands            ║\n╠══════════════════════════════════════════╣\n║  help, clear, ls, cd, pwd, cat, echo    ║\n║  mkdir, touch, rm, write, date, whoami  ║\n║  uname, neofetch, ps, kill, run, uptime ║\n║  free, df, lsblk, cowsay                ║\n╚══════════════════════════════════════════╝`;
+            }
+
+            function getNeofetch() {
+                return `              ▄▄▄▄▄▄▄\n           ▄████████████▄        user@${Kernel.hostname}\n         ▄████████████████▄      ──────────────────\n        ████████████████████     OS: WebOS ${Kernel.version}\n       ██████████████████████    Kernel: ${Kernel.version}\n      ███████████████████████    Uptime: ${Kernel.getUptimeString()}\n      ████████▀    ▀█████████    Shell: webos-sh\n      ████████      █████████    Processes: ${ProcessManager.list().length}\n       ████████▄  ▄█████████     Terminal: webos-term\n        ███████████████████      CPU: Browser (virtual)\n         ▀████████████████▀      Memory: ${Math.round(performance.memory?.usedJSHeapSize/1048576)||'N/A'} MB\n           ▀████████████▀        Theme: Dark\n              ▀▀▀▀▀▀▀`;
+            }
+
+            function cowsay(text) {
+                const msg = text || 'Moo!';
+                const border = '─'.repeat(msg.length + 2);
+                return `┌${border}┐\n│ ${msg} │\n└${border}┘\n         \\   ^__^\n          \\  (oo)\\_______\n             (__)\\       )\\/\\\n                 ||----w |\n                 ||     ||`;
+            }
+
+            function appendTerminalOutput(windowId, text, type = 'cmd-echo') {
+                const winData = WindowManager.getWindowById(windowId);
+                if (!winData) return;
+                const outputEl = winData.el.querySelector('.terminal-output');
+                if (!outputEl || (text === '' && type === 'empty')) return;
+                const line = document.createElement('div');
+                line.className = type;
+                line.textContent = text;
+                outputEl.appendChild(line);
+                outputEl.scrollTop = outputEl.scrollHeight;
+            }
+
+            function appendTerminalPrompt(windowId) {
+                const winData = WindowManager.getWindowById(windowId);
+                if (!winData) return;
+                const outputEl = winData.el.querySelector('.terminal-output');
+                if (!outputEl) return;
+                const state = getTerminalState(windowId);
+                const promptLine = document.createElement('div');
+                promptLine.className = 'prompt-line';
+                promptLine.textContent = `${Kernel.user}@${Kernel.hostname}:${state.currentDir}$ `;
+                outputEl.appendChild(promptLine);
+                outputEl.scrollTop = outputEl.scrollHeight;
+            }
+
+            function clearTerminal(windowId) {
+                const winData = WindowManager.getWindowById(windowId);
+                if (winData) {
+                    const outputEl = winData.el.querySelector('.terminal-output');
+                    if (outputEl) outputEl.innerHTML = '';
+                }
+            }
+
+            function handleTerminalInput(windowId, inputText) {
+                const state = getTerminalState(windowId);
+                const result = executeCommand(inputText, windowId);
+                const winData = WindowManager.getWindowById(windowId);
+                if (winData) {
+                    const outputEl = winData.el.querySelector('.terminal-output');
+                    if (outputEl) {
+                        const echoLine = document.createElement('div');
+                        echoLine.className = 'prompt-line';
+                        echoLine.textContent = `${Kernel.user}@${Kernel.hostname}:${state.currentDir}$ ${inputText}`;
+                        outputEl.appendChild(echoLine);
+                    }
+                }
+                if (result.type === 'clear') clearTerminal(windowId);
+                else if (result.output || result.type === 'empty') {
+                    if (result.output) appendTerminalOutput(windowId, result.output, result.type);
+                }
+                appendTerminalPrompt(windowId);
+                if (winData) {
+                    const outputEl = winData.el.querySelector('.terminal-output');
+                    if (outputEl) {
+                        const st = getTerminalState(windowId);
+                        st.outputLines = Array.from(outputEl.children).map(el => ({
+                            text: el.textContent,
+                            className: el.className
+                        }));
+                    }
+                }
+                PersistenceManager.scheduleSave();
+            }
+
+            function setupTerminalEvents(windowId) {
+                const winData = WindowManager.getWindowById(windowId);
+                if (!winData) return;
+                const inputEl = winData.el.querySelector('.terminal-input');
+                const outputEl = winData.el.querySelector('.terminal-output');
+                if (!inputEl || !outputEl) return;
+                const state = getTerminalState(windowId);
+                appendTerminalPrompt(windowId);
+                outputEl.addEventListener('click', () => inputEl.focus());
+                winData.el.querySelector('.terminal-container').addEventListener('click', () => inputEl.focus());
+                inputEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const text = inputEl.value;
+                        inputEl.value = '';
+                        if (text.trim()) handleTerminalInput(windowId, text);
+                        else appendTerminalPrompt(windowId);
+                        e.preventDefault();
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        if (state.history.length && state.historyIndex > 0) {
+                            state.historyIndex--;
+                            inputEl.value = state.history[state.historyIndex] || '';
+                        }
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (state.historyIndex < state.history.length - 1) {
+                            state.historyIndex++;
+                            inputEl.value = state.history[state.historyIndex] || '';
+                        } else {
+                            state.historyIndex = state.history.length;
+                            inputEl.value = '';
+                        }
+                    } else if (e.key === 'Tab') {
+                        e.preventDefault();
+                        const val = inputEl.value,
+                            lastWord = val.split(' ').pop() || '';
+                        const listing = FileSystem.listDir(state.currentDir) || [];
+                        const matches = listing.filter(f => f.name.startsWith(lastWord));
+                        if (matches.length === 1) {
+                            const parts = val.split(' ');
+                            parts[parts.length - 1] = matches[0].name;
+                            inputEl.value = parts.join(' ');
+                        } else if (matches.length > 1) appendTerminalOutput(windowId, matches.map(m => m.name).join('  '), 'info');
+                    } else if (e.key === 'l' && e.ctrlKey) {
+                        e.preventDefault();
+                        clearTerminal(windowId);
+                        appendTerminalPrompt(windowId);
+                    }
+                });
+                setTimeout(() => inputEl.focus(), 150);
+            }
+
+            // ==================== EDITOR STATE ====================
+            const editorStates = new Map();
+
+            function getEditorState(windowId) {
+                if (!editorStates.has(windowId)) editorStates.set(windowId, {
+                    filePath: null,
+                    content: '',
+                    modified: false
+                });
+                return editorStates.get(windowId);
+            }
+
+            function setupEditorEvents(windowId) {
+                const winData = WindowManager.getWindowById(windowId);
+                if (!winData) return;
+                const textarea = winData.el.querySelector('.editor-textarea');
+                if (!textarea) return;
+                const state = getEditorState(windowId);
+                textarea.addEventListener('input', () => {
+                    state.content = textarea.value;
+                    state.modified = true;
+                    updateEditorStatus(windowId);
+                    PersistenceManager.scheduleSave();
+                });
+                textarea.addEventListener('keydown', (e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                        e.preventDefault();
+                        const st = getEditorState(windowId);
+                        const path = st.filePath || '/home/user/untitled.txt';
+                        FileSystem.writeFile(path, textarea.value);
+                        st.filePath = path;
+                        st.content = textarea.value;
+                        st.modified = false;
+                        updateEditorStatus(windowId);
+                        showNotification(`Saved: ${path}`);
+                        PersistenceManager.saveNow();
+                    }
+                });
+                updateEditorStatus(windowId);
+                setTimeout(() => textarea.focus(), 150);
+            }
+
+            function updateEditorStatus(windowId) {
+                const winData = WindowManager.getWindowById(windowId);
+                if (!winData) return;
+                const statusBar = winData.el.querySelector('.editor-statusbar');
+                const state = getEditorState(windowId);
+                if (!statusBar || !state) return;
+                const fileName = state.filePath ? state.filePath.split('/').pop() : 'Untitled';
+                const mod = state.modified ? ' [modified]' : '';
+                const lines = state.content.split('\n').length;
+                const chars = state.content.length;
+                statusBar.textContent = `${fileName}${mod} | Lines: ${lines} | Chars: ${chars}`;
+            }
+
+            function openFileInEditor(windowId, filePath) {
+                const content = FileSystem.readFile(filePath);
+                if (content === null) return false;
+                const state = getEditorState(windowId);
+                state.filePath = filePath;
+                state.content = content;
+                state.modified = false;
+                const winData = WindowManager.getWindowById(windowId);
+                if (winData) {
+                    const textarea = winData.el.querySelector('.editor-textarea');
+                    if (textarea) textarea.value = content;
+                    const titleEl = winData.el.querySelector('.window-title');
+                    if (titleEl) titleEl.textContent = '📝 ' + filePath.split('/').pop();
+                    updateEditorStatus(windowId);
+                }
+                return true;
+            }
+
+            // ==================== APP LAUNCHERS ====================
+            function launchApp(appType, options = {}) {
+                switch (appType) {
+                    case 'terminal':
+                        launchTerminal(options);
+                        break;
+                    case 'text-editor':
+                        launchTextEditor(options);
+                        break;
+                    case 'calculator':
+                        launchCalculator(options);
+                        break;
+                    case 'file-explorer':
+                        launchFileExplorer(options);
+                        break;
+                    case 'system-monitor':
+                        launchSystemMonitor(options);
+                        break;
+                }
+            }
+
+            function launchTerminal(options = {}) {
+                const title = options.title || '💻 Terminal';
+                const contentHTML = `<div class="terminal-container"><div class="terminal-output"></div><div class="terminal-input-line"><span class="terminal-prompt">$</span><input type="text" class="terminal-input" spellcheck="false" autocomplete="off"></div></div>`;
+                const pid = ProcessManager.register('terminal', 'application');
+                const winId = WindowManager.createWindow(title, contentHTML, {
+                    width: 640,
+                    height: 420,
+                    appType: 'terminal',
+                    pid
+                });
+                const proc = ProcessManager.processes.find(p => p.pid === pid);
+                if (proc) proc.windowId = winId;
+                setTimeout(() => {
+                    const winData = WindowManager.getWindowById(winId);
+                    if (winData) {
+                        const promptSpan = winData.el.querySelector('.terminal-prompt');
+                        const state = getTerminalState(winId);
+                        if (promptSpan) promptSpan.textContent = `${Kernel.user}@${Kernel.hostname}:${state.currentDir}$ `;
+                    }
+                }, 100);
+                setupTerminalEvents(winId);
+                return winId;
+            }
+
+            function launchTextEditor(options = {}) {
+                const title = options.title || '📝 Text Editor';
+                const contentHTML = `<div class="editor-container"><textarea class="editor-textarea" placeholder="Start typing..."></textarea><div class="editor-statusbar">Untitled | Lines: 0 | Chars: 0</div></div>`;
+                const pid = ProcessManager.register('text-editor', 'application');
+                const winId = WindowManager.createWindow(title, contentHTML, {
+                    width: 550,
+                    height: 400,
+                    appType: 'text-editor',
+                    pid
+                });
+                const proc = ProcessManager.processes.find(p => p.pid === pid);
+                if (proc) proc.windowId = winId;
+                setupEditorEvents(winId);
+                if (options.filePath) setTimeout(() => openFileInEditor(winId, options.filePath), 200);
+                return winId;
+            }
+
+            function launchCalculator(options = {}) {
+                const title = options.title || '🔢 Calculator';
+                const contentHTML = `<div class="calc-container"><div class="calc-display">0</div><div class="calc-buttons"><button class="calc-btn clear">C</button><button class="calc-btn">(</button><button class="calc-btn">)</button><button class="calc-btn op">/</button><button class="calc-btn">7</button><button class="calc-btn">8</button><button class="calc-btn">9</button><button class="calc-btn op">*</button><button class="calc-btn">4</button><button class="calc-btn">5</button><button class="calc-btn">6</button><button class="calc-btn op">-</button><button class="calc-btn">1</button><button class="calc-btn">2</button><button class="calc-btn">3</button><button class="calc-btn op">+</button><button class="calc-btn" style="grid-column:span 2;">0</button><button class="calc-btn">.</button><button class="calc-btn equals">=</button></div></div>`;
+                const pid = ProcessManager.register('calculator', 'application');
+                const winId = WindowManager.createWindow(title, contentHTML, {
+                    width: 300,
+                    height: 380,
+                    appType: 'calculator',
+                    pid
+                });
+                const proc = ProcessManager.processes.find(p => p.pid === pid);
+                if (proc) proc.windowId = winId;
+                setTimeout(() => setupCalculatorEvents(winId), 100);
+                return winId;
+            }
+
+            function setupCalculatorEvents(windowId) {
+                const winData = WindowManager.getWindowById(windowId);
+                if (!winData) return;
+                const display = winData.el.querySelector('.calc-display');
+                if (!display) return;
+                let current = '0',
+                    expr = '',
+                    reset = false;
+                const update = () => display.textContent = current;
+                winData.el.querySelectorAll('.calc-btn').forEach(btn => btn.addEventListener('click', () => {
+                    const v = btn.textContent;
+                    if (v === 'C') {
+                        current = '0';
+                        expr = '';
+                        reset = false;
+                    } else if (v === '=') {
+                        try {
+                            const r = Function('"use strict"; return (' + (expr + current) + ')')();
+                            current = String(r);
+                            expr = '';
+                            reset = true;
+                        } catch {
+                            current = 'Error';
+                        }
+                    } else if (['+', '-', '*', '/'].includes(v)) {
+                        expr += current + v;
+                        current = '0';
+                        reset = false;
+                    } else if (v === '(' || v === ')') {
+                        if (reset) {
+                            expr = '';
+                            current = v;
+                            reset = false;
+                        } else current = current === '0' ? v : current + v;
+                    } else {
+                        if (reset) {
+                            current = v;
+                            reset = false;
+                        } else current = current === '0' && v !== '.' ? v : current + v;
+                    }
+                    update();
+                }));
+            }
+
+            function launchFileExplorer(options = {}) {
+                const title = options.title || '📁 File Explorer';
+                const startPath = options.startPath || '/home/user';
+                const contentHTML = `<div class="explorer-container"><div class="explorer-nav"><button class="explorer-back">← Back</button><button class="explorer-up">↑ Up</button><button class="explorer-home">⌂ Home</button><span class="explorer-path">${startPath}</span></div><div class="explorer-list"></div></div>`;
+                const pid = ProcessManager.register('file-explorer', 'application');
+                const winId = WindowManager.createWindow(title, contentHTML, {
+                    width: 500,
+                    height: 400,
+                    appType: 'file-explorer',
+                    pid
+                });
+                const proc = ProcessManager.processes.find(p => p.pid === pid);
+                if (proc) proc.windowId = winId;
+                setTimeout(() => setupExplorerEvents(winId, startPath), 100);
+                return winId;
+            }
+
+            function setupExplorerEvents(windowId, initialPath) {
+                const winData = WindowManager.getWindowById(windowId);
+                if (!winData) return;
+                const pathSpan = winData.el.querySelector('.explorer-path');
+                const listEl = winData.el.querySelector('.explorer-list');
+                let currentPath = initialPath,
+                    history = [currentPath],
+                    pos = 0;
+
+                function navigate(path) {
+                    currentPath = path;
+                    if (pos < history.length - 1) history = history.slice(0, pos + 1);
+                    history.push(path);
+                    pos = history.length - 1;
+                    render();
+                    PersistenceManager.scheduleSave();
+                }
+
+                function render() {
+                    pathSpan.textContent = currentPath;
+                    const listing = FileSystem.listDir(currentPath);
+                    listEl.innerHTML = '';
+                    if (!listing || !listing.length) {
+                        listEl.innerHTML = '<div class="explorer-empty">Empty directory</div>';
+                        return;
+                    }
+                    listing.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'explorer-item';
+                        div.innerHTML = `<span class="ex-icon">${item.type==='dir'?'📁':'📄'}</span><span>${item.name}</span>`;
+                        div.addEventListener('dblclick', () => {
+                            const newPath = currentPath === '/' ? '/' + item.name : currentPath + '/' + item.name;
+                            if (item.type === 'dir') navigate(newPath);
+                            else {
+                                const edId = launchTextEditor({
+                                    filePath: newPath,
+                                    title: '📝 ' + item.name
+                                });
+                                setTimeout(() => openFileInEditor(edId, newPath), 300);
+                            }
+                        });
+                        listEl.appendChild(div);
+                    });
+                }
+                winData.el.querySelector('.explorer-back').addEventListener('click', () => {
+                    if (pos > 0) {
+                        pos--;
+                        currentPath = history[pos];
+                        render();
+                    }
+                });
+                winData.el.querySelector('.explorer-up').addEventListener('click', () => {
+                    if (currentPath !== '/') navigate(FileSystem.getParentPath(currentPath));
+                });
+                winData.el.querySelector('.explorer-home').addEventListener('click', () => navigate('/home/user'));
+                render();
+            }
+
+            function launchSystemMonitor(options = {}) {
+                const title = options.title || '📊 System Monitor';
+                const contentHTML = `<div class="sysmon-container"><h3>System Monitor</h3><p>CPU: <span id="sysmon-cpu">0%</span></p><div class="sysmon-bar"><div class="sysmon-bar-fill" style="width:5%;"></div></div><p>Memory: <span id="sysmon-mem">0 MB</span></p><div class="sysmon-bar"><div class="sysmon-bar-fill" style="width:15%;"></div></div><p>Uptime: <span id="sysmon-uptime">0s</span></p><p>Processes: <span id="sysmon-procs">0</span></p><p>Windows: <span id="sysmon-wins">0</span></p></div>`;
+                const pid = ProcessManager.register('system-monitor', 'application');
+                const winId = WindowManager.createWindow(title, contentHTML, {
+                    width: 380,
+                    height: 320,
+                    appType: 'system-monitor',
+                    pid
+                });
+                ProcessManager.processes.find(p => p.pid === pid).windowId = winId;
+                const interval = setInterval(() => {
+                    const wd = WindowManager.getWindowById(winId);
+                    if (!wd.el.parentNode) {
+                        clearInterval(interval);
+                        return;
+                    }
+                    wd.el.querySelector('#sysmon-cpu').textContent = (Math.floor(Math.random() * 25) + 2) + '%';
+                    wd.el.querySelector('#sysmon-mem').textContent = `${Math.round(performance.memory?.usedJSHeapSize/1048576)||800} MB`;
+                    wd.el.querySelector('#sysmon-uptime').textContent = Kernel.getUptimeString();
+                    wd.el.querySelector('#sysmon-procs').textContent = ProcessManager.list().length;
+                    wd.el.querySelector('#sysmon-wins').textContent = WindowManager.windows.size;
+                }, 1500);
+                return winId;
+            }
+
+            function showNotification(msg) {
+                const area = document.getElementById('notification-area');
+                const notif = document.createElement('div');
+                notif.className = 'notification';
+                notif.textContent = msg;
+                area.appendChild(notif);
+                setTimeout(() => {
+                    if (notif.parentNode) notif.parentNode.removeChild(notif);
+                }, 3000);
+            }
+
+            // ==================== PERSISTENCE MANAGER ====================
+            const PersistenceManager = {
+                STORAGE_KEY: 'webos_state',
+                saveTimer: null,
+                isLoading: false,
+
+                scheduleSave() {
+                    if (this.isLoading) return;
+                    clearTimeout(this.saveTimer);
+                    this.saveTimer = setTimeout(() => this.saveState(), 300);
+                },
+                saveNow() {
+                    clearTimeout(this.saveTimer);
+                    this.saveState();
+                },
+                saveState() {
+                    if (this.isLoading) return;
+                    try {
+                        const state = {
+                            filesystem: this.serializeFS(FileSystem.root),
+                            windows: [],
+                            terminalStates: {},
+                            editorStates: {},
+                            focusedWindowId: WindowManager.focusedWindowId,
+                            windowCounter: WindowManager.windowCounter,
+                            zIndexBase: WindowManager.zIndexBase,
+                            pidCounter: Kernel.pidCounter,
+                        };
+                        for (const [id, winData] of WindowManager.windows) {
+                            const ws = {
+                                id,
+                                title: winData.title,
+                                appType: winData.appType,
+                                x: winData.x,
+                                y: winData.y,
+                                width: winData.width,
+                                height: winData.height,
+                                minimized: winData.minimized,
+                                maximized: winData.maximized,
+                                pid: winData.pid,
+                            };
+                            if (winData.appType === 'terminal' && terminalStates.has(id)) {
+                                const ts = terminalStates.get(id);
+                                ws.terminalState = {
+                                    currentDir: ts.currentDir,
+                                    history: ts.history,
+                                    historyIndex: ts.historyIndex,
+                                    outputLines: ts.outputLines
+                                };
+                            }
+                            if (winData.appType === 'text-editor' && editorStates.has(id)) {
+                                const es = editorStates.get(id);
+                                ws.editorState = {
+                                    filePath: es.filePath,
+                                    content: es.content,
+                                    modified: es.modified
+                                };
+                            }
+                            if (winData.appType === 'file-explorer') {
+                                const pathSpan = winData.el.querySelector('.explorer-path');
+                                if (pathSpan) ws.explorerPath = pathSpan.textContent;
+                            }
+                            state.windows.push(ws);
+                        }
+                        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
+                    } catch (e) {
+                        console.warn('Failed to save state:', e);
+                    }
+                },
+
+                serializeFS(node) {
+                    if (!node) return null;
+                    const obj = {
+                        type: node.type,
+                        name: node.name,
+                        createdAt: node.createdAt
+                    };
+                    if (node.type === 'file') {
+                        obj.content = node.content;
+                        obj.size = node.size;
+                        obj.modifiedAt = node.modifiedAt;
+                    } else if (node.type === 'dir') {
+                        obj.children = {};
+                        for (const [name, child] of Object.entries(node.children)) {
+                            obj.children[name] = this.serializeFS(child);
+                        }
+                    }
+                    return obj;
+                },
+
+                deserializeFS(obj, parent = null) {
+                    if (!obj) return null;
+                    const node = {
+                        type: obj.type,
+                        name: obj.name,
+                        parent,
+                        createdAt: obj.createdAt
+                    };
+                    if (obj.type === 'file') {
+                        node.content = obj.content;
+                        node.size = obj.size;
+                        node.modifiedAt = obj.modifiedAt;
+                    } else if (obj.type === 'dir') {
+                        node.children = {};
+                        for (const [name, childObj] of Object.entries(obj.children || {})) {
+                            node.children[name] = this.deserializeFS(childObj, node);
+                        }
+                    }
+                    return node;
+                },
+
+                loadState() {
+                    try {
+                        const json = localStorage.getItem(this.STORAGE_KEY);
+                        if (!json) return false;
+                        const state = JSON.parse(json);
+                        this.isLoading = true;
+
+                        if (state.filesystem) {
+                            FileSystem.root = this.deserializeFS(state.filesystem, null);
+                        }
+
+                        Kernel.pidCounter = state.pidCounter || 1;
+                        WindowManager.windowCounter = state.windowCounter || 0;
+                        WindowManager.zIndexBase = state.zIndexBase || 100;
+
+                        const windowsToRestore = state.windows || [];
+                        windowsToRestore.forEach(ws => {
+                            const opts = {
+                                id: ws.id,
+                                width: ws.width,
+                                height: ws.height,
+                                x: ws.x,
+                                y: ws.y,
+                                appType: ws.appType,
+                                pid: ws.pid,
+                                skipAnimation: true,
+                                title: ws.title
+                            };
+                            let winId;
+                            switch (ws.appType) {
+                                case 'terminal':
+                                    winId = launchTerminalPersist(opts, ws.terminalState);
+                                    break;
+                                case 'text-editor':
+                                    winId = launchTextEditorPersist(opts, ws.editorState);
+                                    break;
+                                case 'file-explorer':
+                                    winId = launchFileExplorerPersist(opts, ws.explorerPath);
+                                    break;
+                                case 'calculator':
+                                    winId = launchCalculatorPersist(opts);
+                                    break;
+                                case 'system-monitor':
+                                    winId = launchSystemMonitorPersist(opts);
+                                    break;
+                                default:
+                                    winId = WindowManager.createWindow(ws.title, '<div>App</div>', opts);
+                            }
+                            if (winId) {
+                                const wd = WindowManager.windows.get(winId);
+                                if (wd) {
+                                    if (ws.minimized) WindowManager.minimizeWindow(winId);
+                                    if (ws.maximized) {
+                                        wd.prevBounds = {
+                                            x: ws.x,
+                                            y: ws.y,
+                                            width: ws.width,
+                                            height: ws.height
+                                        };
+                                        WindowManager.toggleMaximize(winId);
+                                    }
+                                }
+                            }
+                        });
+
+                        if (state.focusedWindowId && WindowManager.windows.has(state.focusedWindowId)) {
+                            WindowManager.focusWindow(state.focusedWindowId);
+                        }
+
+                        this.isLoading = false;
+                        return true;
+                    } catch (e) {
+                        console.error('Failed to load state:', e);
+                        this.isLoading = false;
+                        return false;
+                    }
+                }
+            };
+
+            // ---- Persistent launchers (reuse the same window HTML but restore state) ----
+            function launchTerminalPersist(opts, termState) {
+                const title = opts.title || '💻 Terminal';
+                const contentHTML = `<div class="terminal-container"><div class="terminal-output"></div><div class="terminal-input-line"><span class="terminal-prompt">$</span><input type="text" class="terminal-input" spellcheck="false" autocomplete="off"></div></div>`;
+                const pid = opts.pid || ProcessManager.register('terminal', 'application');
+                const winId = WindowManager.createWindow(title, contentHTML, {...opts,
+                    pid,
+                    appType: 'terminal'
+                });
+                ProcessManager.processes.find(p => p.pid === pid).windowId = winId;
+
+                if (termState) {
+                    const state = getTerminalState(winId);
+                    state.currentDir = termState.currentDir || '/home/user';
+                    state.history = termState.history || [];
+                    state.historyIndex = (termState.historyIndex) || -1;
+                    state.outputLines = termState.outputLines || [];
+                }
+
+                setTimeout(() => {
+                    const winData = WindowManager.getWindowById(winId);
+                    if (!winData) return;
+                    const promptSpan = winData.el.querySelector('.terminal-prompt');
+                    const state = getTerminalState(winId);
+                    if (promptSpan) promptSpan.textContent = `${Kernel.user}@${Kernel.hostname}:${state.currentDir}$ `;
+                    const outputEl = winData.el.querySelector('.terminal-output');
+                    if (outputEl && state.outputLines.length) {
+                        outputEl.innerHTML = '';
+                        state.outputLines.forEach(line => {
+                            const div = document.createElement('div');
+                            div.className = line.className || '';
+                            div.textContent = line.text;
+                            outputEl.appendChild(div);
+                        });
+                        outputEl.scrollTop = outputEl.scrollHeight;
+                    }
+                    if (!state.outputLines.length) appendTerminalPrompt(winId);
+                    setupTerminalEvents(winId);
+                }, 150);
+                return winId;
+            }
+
+            function launchTextEditorPersist(opts, editorState) {
+                const title = opts.title || '📝 Text Editor';
+                const contentHTML = `<div class="editor-container"><textarea class="editor-textarea"></textarea><div class="editor-statusbar">Untitled | Lines: 0 | Chars: 0</div></div>`;
+                const pid = opts.pid || ProcessManager.register('text-editor', 'application');
+                const winId = WindowManager.createWindow(title, contentHTML, {...opts,
+                    pid,
+                    appType: 'text-editor'
+                });
+                ProcessManager.processes.find(p => p.pid === pid).windowId = winId;
+                if (editorState) {
+                    const es = getEditorState(winId);
+                    es.filePath = editorState.filePath || null;
+                    es.content = editorState.content || '';
+                    es.modified = editorState.modified || false;
+                }
+                setTimeout(() => {
+                    const winData = WindowManager.getWindowById(winId);
+                    if (winData) {
+                        const textarea = winData.el.querySelector('.editor-textarea');
+                        const es = getEditorState(winId);
+                        if (textarea) textarea.value = es.content;
+                        updateEditorStatus(winId);
+                        if (es.filePath) {
+                            const titleEl = winData.el.querySelector('.window-title');
+                            if (titleEl) titleEl.textContent = '📝 ' + es.filePath.split('/').pop();
+                        }
+                    }
+                    setupEditorEvents(winId);
+                }, 150);
+                return winId;
+            }
+
+            function launchFileExplorerPersist(opts, explorerPath) {
+                const path = explorerPath || '/home/user';
+                const title = opts.title || '📁 File Explorer';
+                const contentHTML = `<div class="explorer-container"><div class="explorer-nav"><button class="explorer-back">← Back</button><button class="explorer-up">↑ Up</button><button class="explorer-home">⌂ Home</button><span class="explorer-path">${path}</span></div><div class="explorer-list"></div></div>`;
+                const pid = opts.pid || ProcessManager.register('file-explorer', 'application');
+                const winId = WindowManager.createWindow(title, contentHTML, {...opts,
+                    pid,
+                    appType: 'file-explorer'
+                });
+                ProcessManager.processes.find(p => p.pid === pid).windowId = winId;
+                setTimeout(() => setupExplorerEvents(winId, path), 150);
+                return winId;
+            }
+
+            function launchCalculatorPersist(opts) {
+                const title = opts.title || '🔢 Calculator';
+                const contentHTML = `<div class="calc-container"><div class="calc-display">0</div><div class="calc-buttons"><button class="calc-btn clear">C</button><button class="calc-btn">(</button><button class="calc-btn">)</button><button class="calc-btn op">/</button><button class="calc-btn">7</button><button class="calc-btn">8</button><button class="calc-btn">9</button><button class="calc-btn op">*</button><button class="calc-btn">4</button><button class="calc-btn">5</button><button class="calc-btn">6</button><button class="calc-btn op">-</button><button class="calc-btn">1</button><button class="calc-btn">2</button><button class="calc-btn">3</button><button class="calc-btn op">+</button><button class="calc-btn" style="grid-column:span 2;">0</button><button class="calc-btn">.</button><button class="calc-btn equals">=</button></div></div>`;
+                const pid = opts.pid || ProcessManager.register('calculator', 'application');
+                const winId = WindowManager.createWindow(title, contentHTML, {...opts,
+                    pid,
+                    appType: 'calculator'
+                });
+                ProcessManager.processes.find(p => p.pid === pid).windowId = winId;
+                setTimeout(() => setupCalculatorEvents(winId), 150);
+                return winId;
+            }
+
+            function launchSystemMonitorPersist(opts) {
+                const title = opts.title || '📊 System Monitor';
+                const contentHTML = `<div class="sysmon-container"><h3>System Monitor</h3><p>CPU: <span id="sysmon-cpu">0%</span></p><div class="sysmon-bar"><div class="sysmon-bar-fill" style="width:5%;"></div></div><p>Memory: <span id="sysmon-mem">0 MB</span></p><div class="sysmon-bar"><div class="sysmon-bar-fill" style="width:15%;"></div></div><p>Uptime: <span id="sysmon-uptime">0s</span></p><p>Processes: <span id="sysmon-procs">0</span></p><p>Windows: <span id="sysmon-wins">0</span></p></div>`;
+                const pid = opts.pid || ProcessManager.register('system-monitor', 'application');
+                const winId = WindowManager.createWindow(title, contentHTML, {...opts,
+                    pid,
+                    appType: 'system-monitor'
+                });
+                ProcessManager.processes.find(p => p.pid === pid).windowId = winId;
+                const interval = setInterval(() => {
+                    const wd = WindowManager.getWindowById(winId);
+                    if (!wd.el.parentNode) {
+                        clearInterval(interval);
+                        return;
+                    }
+                    wd.el.querySelector('#sysmon-cpu').textContent = (Math.floor(Math.random() * 25) + 2) + '%';
+                    wd.el.querySelector('#sysmon-mem').textContent = `${Math.round(performance.memory?.usedJSHeapSize/1048576)||800} MB`;
+                    wd.el.querySelector('#sysmon-uptime').textContent = Kernel.getUptimeString();
+                    wd.el.querySelector('#sysmon-procs').textContent = ProcessManager.list().length;
+                    wd.el.querySelector('#sysmon-wins').textContent = WindowManager.windows.size;
+                }, 1500);
+                return winId;
+            }
+
+            // ==================== BOOT & GLOBAL ====================
+            function runBootSequence() {
+                const bootScreen = document.getElementById('boot-screen');
+                const bootLog = document.getElementById('boot-log');
+                const bootLogo = document.getElementById('boot-logo');
+                const bootProgress = document.getElementById('boot-progress');
+                const bootProgressBar = document.getElementById('boot-progress-bar');
+
+                const logLines = [
+                    '[BIOS] Initializing hardware...',
+                    '[BIOS] CPU: WebOS Virtual Processor @ 3.2GHz',
+                    '[BIOS] Memory: 8192MB OK',
+                    '[BIOS] Storage: Virtual Disk 64GB detected',
+                    '[BIOS] Boot device: vda0',
+                    '',
+                    '[KERNEL] Loading WebOS kernel...',
+                    '[KERNEL] Version 1.0.0 (browser-build)',
+                    '[KERNEL] Initializing process scheduler...',
+                    '[KERNEL] Setting up virtual memory...',
+                    '[KERNEL] Initializing filesystem driver...',
+                    '[KERNEL] Mounting root filesystem...',
+                    '[KERNEL] Mounting /tmp (tmpfs)...',
+                    '[KERNEL] Filesystem check: clean',
+                    '',
+                    '[INIT] Starting system services...',
+                    '[INIT] Starting window manager...',
+                    '[INIT] Starting shell service...',
+                    '[INIT] System ready.',
+                ];
+
+                let lineIndex = 0;
+                const typeInterval = setInterval(() => {
+                    if (lineIndex < logLines.length) {
+                        bootLog.textContent += logLines[lineIndex] + '\n';
+                        bootLog.scrollTop = bootLog.scrollHeight;
+                        lineIndex++;
+                    } else {
+                        clearInterval(typeInterval);
+                        bootLogo.classList.add('visible');
+                        bootProgress.classList.add('visible');
+                        setTimeout(() => bootProgressBar.style.width = '100%', 200);
+                        setTimeout(() => {
+                            bootScreen.classList.add('fade-out');
+                            showDesktop();
+                        }, 1200);
+                    }
+                }, 60);
+            }
+
+            function showDesktop() {
+                document.getElementById('desktop').style.display = 'block';
+                document.getElementById('taskbar').style.display = 'flex';
+                document.getElementById('boot-screen').style.display = 'none';
+                updateClock();
+                setInterval(updateClock, 1000);
+
+                const restored = PersistenceManager.loadState();
+                if (!restored) {
+                    launchTerminal(); // fresh start
+                }
+                showNotification('WebOS ready. All data saved in browser.');
+            }
+
+            function updateClock() {
+                document.getElementById('taskbar-clock').textContent = new Date().toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+
+            function setupGlobalEvents() {
+                const startBtn = document.getElementById('start-btn');
+                const startMenu = document.getElementById('start-menu');
+                startBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isOpen = startMenu.classList.contains('open');
+                    if (isOpen) {
+                        startMenu.classList.remove('open');
+                        startBtn.classList.remove('active');
+                    } else {
+                        startMenu.classList.add('open');
+                        startBtn.classList.add('active');
+                    }
+                });
+                document.addEventListener('click', (e) => {
+                    if (!startMenu.contains(e.target) && e.target !== startBtn) {
+                        startMenu.classList.remove('open');
+                        startBtn.classList.remove('active');
+                    }
+                });
+                startMenu.querySelectorAll('.menu-item[data-app]').forEach(item => {
+                    item.addEventListener('click', () => {
+                        launchApp(item.dataset.app);
+                        startMenu.classList.remove('open');
+                        startBtn.classList.remove('active');
+                    });
+                });
+                document.getElementById('menu-shutdown').addEventListener('click', () => {
+                    startMenu.classList.remove('open');
+                    startBtn.classList.remove('active');
+                    PersistenceManager.saveNow();
+                    showNotification('Shutting down...');
+                    setTimeout(() => location.reload(), 600);
+                });
+                document.querySelectorAll('.desktop-icon').forEach(icon => {
+                    icon.addEventListener('dblclick', () => launchApp(icon.dataset.app));
+                    icon.addEventListener('click', () => {
+                        document.querySelectorAll('.desktop-icon').forEach(i => {
+                            i.style.background = '';
+                            i.style.borderColor = 'transparent';
+                        });
+                        icon.style.background = 'rgba(255,255,255,0.08)';
+                        icon.style.borderColor = 'rgba(255,255,255,0.2)';
+                    });
+                });
+                document.getElementById('desktop').addEventListener('click', (e) => {
+                    if (e.target === document.getElementById('desktop') || e.target.id === 'desktop-icons') {
+                        document.querySelectorAll('.desktop-icon').forEach(i => {
+                            i.style.background = '';
+                            i.style.borderColor = 'transparent';
+                        });
+                    }
+                });
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey && e.key === 't') {
+                        e.preventDefault();
+                        launchTerminal();
+                    }
+                    if (e.ctrlKey && e.key === 'n') {
+                        e.preventDefault();
+                        launchTextEditor();
+                    }
+                    if (e.ctrlKey && e.key === 'e') {
+                        e.preventDefault();
+                        launchFileExplorer();
+                    }
+                });
+                window.addEventListener('beforeunload', () => PersistenceManager.saveNow());
+            }
+
+            function init() {
+                Kernel.init();
+                if (!localStorage.getItem(PersistenceManager.STORAGE_KEY)) {
+                    FileSystem.init(true);
+                } else {
+                    FileSystem.root = null;
+                    FileSystem.init(false);
+                }
+                ProcessManager.register('kernel', 'system');
+                ProcessManager.register('window-manager', 'system');
+                ProcessManager.register('filesystem-daemon', 'system');
+                setupGlobalEvents();
+                runBootSequence();
+            }
+
+            init();
+            window.WebOS = {
+                Kernel,
+                FileSystem,
+                ProcessManager,
+                WindowManager,
+                launchApp,
+                showNotification
+            };
+        })();
+    </script>
+</body>
+
+</html>
