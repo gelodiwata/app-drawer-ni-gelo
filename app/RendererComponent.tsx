@@ -15,53 +15,55 @@ const RendererComponent = ({ filePath, onBack }: any) => {
   }, [filePath]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <header
+    <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
+      {/* --- Super Subtle Floating Back Button --- */}
+      <button
+        onClick={onBack}
         style={{
-          flexShrink: 0,
-          height: '60px',
-          background: 'rgba(255,255,255,0.95)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(0,0,0,0.08)',
+          position: 'absolute',
+          top: 18,
+          left: 18,
+          zIndex: 999,
+          width: 42,
+          height: 42,
+          borderRadius: '50%',
+          background: 'rgba(0, 0, 0, 0.45)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          color: 'white',
+          fontSize: '20px',
+          fontWeight: '300',
+          cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
-          padding: '0 20px',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-          zIndex: 10,
+          justifyContent: 'center',
+          boxShadow: '0 2px 12px rgba(0, 0, 0, 0.15)',
+          transition: 'all 0.25s ease',
+          padding: 0,
+          opacity: 0.5, // <-- Starts semi-hidden
         }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(0, 0, 0, 0.8)';
+          e.currentTarget.style.transform = 'scale(1.08)';
+          e.currentTarget.style.opacity = '1';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(0, 0, 0, 0.45)';
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.opacity = '0.5';
+        }}
+        aria-label="Back to Home"
       >
-        <button
-          onClick={onBack}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#007aff',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            transition: 'background 0.2s',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,122,255,0.08)')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-        >
-          ← Back to Home
-        </button>
-        <span style={{ marginLeft: 'auto', fontSize: '14px', color: '#666', fontWeight: '500' }}>
-          {filePath.replace(/^\//, '').replace(/\.html$/, '')}
-        </span>
-      </header>
+        ←
+      </button>
 
+      {/* --- Iframe now takes full screen --- */}
       <iframe
         srcDoc={htmlContent}
         title="HTML Page"
         style={{
-          flex: 1,
           width: '100%',
+          height: '100vh',
           border: 'none',
         }}
         sandbox="allow-scripts allow-same-origin allow-modals"
