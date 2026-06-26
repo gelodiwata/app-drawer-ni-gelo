@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 
-const RendererComponent = ({ filePath, onBack }) => {
+const RendererComponent = ({ filePath, onBack }: any) => {
   const [htmlContent, setHtmlContent] = useState('');
 
   useEffect(() => {
@@ -131,9 +131,9 @@ export const AppLauncher = () => {
           margin: '0 auto',
         }}
       >
-        {apps.map((app) => {
+        {apps.map((app: any) => {
           const chars = Array.from(app.name);
-          const firstChar = chars[0] || '📄';
+          const firstChar: any = chars[0] || '📄';
           const isEmoji = !/^[a-zA-Z0-9_]$/.test(firstChar);
           const icon = firstChar;
           const displayName = isEmoji
