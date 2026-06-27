@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Decentralized Social</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* iOS 27 inspired: frosted glass, dynamic island, soft animations */
+        
+        body {
+            background: radial-gradient(circle at 20% 20%, #ff9a9e 0%, #fad0c4 30%, #fad0c4 60%, #a18cd1 100%);
+            background-attachment: fixed;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.22);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .glass-dark {
+            background: rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        
+        .dynamic-island {
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 40px;
+            padding: 10px 24px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            letter-spacing: -0.3px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .tab-btn.active {
+            color: #007AFF;
+            background: rgba(0, 122, 255, 0.12);
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+        
+        .tab-btn {
+            color: #8E8E93;
+            padding: 8px 16px;
+            transition: all 0.2s;
+        }
+        
+        .message-bubble {
+            max-width: 80%;
+            word-wrap: break-word;
+            border-radius: 20px;
+            padding: 10px 16px;
+            margin: 4px 0;
+        }
+        
+        .post-card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 24px;
+            transition: transform 0.1s ease;
+        }
+        
+        .post-card:active {
+            transform: scale(0.98);
+        }
+        
+        .input-area {
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 28px;
+        }
+        /* Scrollbar hidden */
+        
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+
+<body class="p-4 flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-md h-[85vh] glass rounded-[40px] shadow-2xl flex flex-col overflow-hidden relative">
+
+        <!-- Dynamic Island Header -->
+        <div class="flex justify-center pt-3 pb-2">
+            <div class="dynamic-island flex items-center gap-2">
+                <span class="text-lg">🍃</span>
+                <span id="appTitle">Social</span>
+                <span class="bg-white/20 text-xs px-2 py-0.5 rounded-full ml-2" id="onlineCount">0 online</span>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 overflow-y-auto no-scrollbar px-4 py-2 space-y-4" id="mainContent">
+            <!-- Feed / Chat / Profile views injected here -->
+        </div>
+
+        <!-- Bottom Tab Bar -->
+        <div class="flex justify-around items-center py-2 glass-dark rounded-t-[32px] mt-auto">
+            <button class="tab-btn active flex flex-col items-center gap-1" data-tab="feed" id="feedTab">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        <span class="text-xs font-medium">Feed</span>
+      </button>
+            <button class="tab-btn flex flex-col items-center gap-1" data-tab="chat" id="chatTab">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+        <span class="text-xs font-medium">Chat</span>
+      </button>
+            <button class="tab-btn flex flex-col items-center gap-1" data-tab="profile" id="profileTab">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <span class="text-xs font-medium">Profile</span>
+      </button>
+        </div>
+    </div>
+
+    <script>
+        (async function() {
+                // ---------- IndexedDB Setup ----------
+                const DB_NAME = 'DecentralizedSocialDB';
+                const DB_VERSION = 1;
+                let db;
+
+                function openDB() {
+                    return new Promise((resolve, reject) => {
+                        const request = indexedDB.open(DB_NAME, DB_VERSION);
+                        request.onupgradeneeded = (e) => {
+                            const db = e.target.result;
+                            if (!db.objectStoreNames.contains('posts')) {
+                                const postsStore = db.createObjectStore('posts', {
+                                    keyPath: 'id'
+                                });
+                                postsStore.createIndex('timestamp', 'timestamp', {
+                                    unique: false
+                                });
+                            }
+                            if (!db.objectStoreNames.contains('messages')) {
+                                const messagesStore = db.createObjectStore('messages', {
+                                    keyPath: 'id'
+                                });
+                                messagesStore.createIndex('timestamp', 'timestamp', {
+                                    unique: false
+                                });
+                            }
+                        };
+                        request.onsuccess = (e) => {
+                            db = e.target.result;
+                            resolve(db);
+                        };
+                        request.onerror = (e) => reject(e.target.error);
+                    });
+                }
+
+                function addToStore(storeName, item) {
+                    return new Promise((resolve, reject) => {
+                        const tx = db.transaction(storeName, 'readwrite');
+                        const store = tx.objectStore(storeName);
+                        store.add(item);
+                        tx.oncomplete = () => resolve();
+                        tx.onerror = (e) => reject(e.target.error);
+                    });
+                }
+
+                function getItem(storeName, id) {
+                    return new Promise((resolve, reject) => {
+                        const tx = db.transaction(storeName, 'readonly');
+                        const store = tx.objectStore(storeName);
+                        const req = store.get(id);
+                        req.onsuccess = () => resolve(req.result);
+                        req.onerror = (e) => reject(e.target.error);
+                    });
+                }
+
+                function getAll(storeName) {
+                    return new Promise((resolve, reject) => {
+                        const tx = db.transaction(storeName, 'readonly');
+                        const store = tx.objectStore(storeName);
+                        const req = store.getAll();
+                        req.onsuccess = () => resolve(req.result || []);
+                        req.onerror = (e) => reject(e.target.error);
+                    });
+                }
+
+                // ---------- Username ----------
+                let username = localStorage.getItem('socialUsername');
+                if (!username) {
+                    username = prompt('Choose your username:') || 'anonymous_' + Math.floor(Math.random() * 1000);
+                    localStorage.setItem('socialUsername', username);
+                }
+
+                // ---------- Global state ----------
+                let posts = [];
+                let chatMessages = [];
+                let activeTab = 'feed';
+                let onlineUsers = new Map(); // username -> lastSeen timestamp
+
+                // ---------- Broadcast Channel ----------
+                const channel = new BroadcastChannel('decentralized-social');
+
+                function sendBroadcast(type, payload) {
+                    channel.postMessage({
+                        type,
+                        payload,
+                        sender: username
+                    });
+                }
+
+                channel.onmessage = async(event) => {
+                    const {
+                        type,
+                        payload,
+                        sender
+                    } = event.data;
+                    if (sender === username) return; // ignore own messages
+
+                    switch (type) {
+                        case 'post':
+                            // Avoid duplicates by checking ID
+                            const existingPost = await getItem('posts', payload.id);
+                            if (!existingPost) {
+                                await addToStore('posts', payload);
+                                posts.unshift(payload);
+                                if (activeTab === 'feed') renderFeed();
+                            }
+                            break;
+                        case 'chat':
+                            const existingMsg = await getItem('messages', payload.id);
+                            if (!existingMsg) {
+                                await addToStore('messages', payload);
+                                chatMessages.push(payload);
+                                if (activeTab === 'chat') renderChat();
+                            }
+                            break;
+                        case 'presence':
+                            onlineUsers.set(sender, Date.now());
+                            updateOnlineCount();
+                            break;
+                        case 'username_change':
+                            // Update online users map (re-key) - simply add new, old will expire
+                            onlineUsers.set(payload.newUsername, Date.now());
+                            updateOnlineCount();
+                            // Update posts/messages author display? We'll rely on stored author.
+                            break;
+                    }
+                };
+
+                // Heartbeat
+                setInterval(() => {
+                    sendBroadcast('presence', {
+                        username
+                    });
+                }, 4000);
+
+                // Initial presence
+                sendBroadcast('presence', {
+                    username
+                });
+
+                // Cleanup stale online users (no ping for 8 seconds)
+                setInterval(() => {
+                    const now = Date.now();
+                    for (let [user, last] of onlineUsers.entries()) {
+                        if (now - last > 8000) onlineUsers.delete(user);
+                    }
+                    updateOnlineCount();
+                }, 2000);
+
+                function updateOnlineCount() {
+                    document.getElementById('onlineCount').textContent = `${onlineUsers.size} online`;
+                }
+
+                // ---------- UI Rendering ----------
+                function renderFeed() {
+                    const container = document.getElementById('mainContent');
+                    // Sort posts by timestamp descending
+                    const sorted = [...posts].sort((a, b) => b.timestamp - a.timestamp);
+                    container.innerHTML = `
+          <div class="flex items-center gap-2 mb-4">
+            <input type="text" id="postInput" placeholder="What's on your mind?" 
+                   class="flex-1 input-area px-5 py-3 text-sm outline-none placeholder-white/70 text-gray-900">
+            <button id="postBtn" class="bg-blue-500/80 backdrop-blur-md text-white px-5 py-3 rounded-full font-semibold shadow-lg hover:bg-blue-600/80 transition">
+              Post
+            </button>
+          </div>
+          <div class="space-y-3" id="postsContainer">
+            ${sorted.length === 0 ? '<p class="text-white/70 text-center py-8 text-sm">No posts yet. Start the conversation!</p>' : ''}
+            ${sorted.map(post => `
+              <div class="post-card p-4">
+                <div class="flex justify-between items-start">
+                  <span class="font-bold text-gray-800">@${post.author}</span>
+                  <span class="text-xs text-gray-500">${new Date(post.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                </div>
+                <p class="text-gray-900 mt-1 text-sm">${escapeHtml(post.content)}</p>
+                ${post.repostOf ? `<p class="text-xs text-gray-500 mt-1 italic">↩️ Reposted from @${post.repostOf.author}</p>` : ''}
+                <button class="mt-2 text-xs text-blue-600 font-medium flex items-center gap-1 repostBtn" data-postid="${post.id}">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  Repost
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        // Event listeners
+        document.getElementById('postBtn').addEventListener('click', createPost);
+        document.getElementById('postInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') createPost(); });
+        document.querySelectorAll('.repostBtn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const postId = e.currentTarget.dataset.postid;
+            repost(postId);
+          });
+        });
+      }
+
+      function renderChat() {
+        const container = document.getElementById('mainContent');
+        const sorted = [...chatMessages].sort((a,b) => a.timestamp - b.timestamp);
+        container.innerHTML = `
+          <div class="flex-1 overflow-y-auto no-scrollbar space-y-1 mb-3" id="chatMessagesContainer" style="max-height: calc(85vh - 200px);">
+            ${sorted.length === 0 ? '<p class="text-white/70 text-center py-8 text-sm">No messages yet. Say hello!</p>' : ''}
+            ${sorted.map(msg => `
+              <div class="flex ${msg.author === username ? 'justify-end' : 'justify-start'}">
+                <div class="message-bubble ${msg.author === username ? 'bg-blue-500 text-white ml-auto' : 'bg-white/60 text-gray-900'}">
+                  <span class="text-xs font-semibold opacity-80">@${msg.author}</span>
+                  <p class="text-sm">${escapeHtml(msg.text)}</p>
+                  <span class="text-xs opacity-60">${new Date(msg.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="flex gap-2 mt-2">
+            <input type="text" id="chatInput" placeholder="Message..." 
+                   class="flex-1 input-area px-4 py-2 text-sm outline-none placeholder-white/70 text-gray-900">
+            <button id="chatSendBtn" class="bg-blue-500/80 backdrop-blur-md text-white px-4 py-2 rounded-full font-semibold shadow-lg hover:bg-blue-600/80 transition">
+              Send
+            </button>
+          </div>
+        `;
+        document.getElementById('chatSendBtn').addEventListener('click', sendChat);
+        document.getElementById('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });
+      }
+
+      function renderProfile() {
+        const container = document.getElementById('mainContent');
+        container.innerHTML = `
+          <div class="glass p-6 rounded-3xl text-center">
+            <div class="w-20 h-20 bg-blue-200 rounded-full mx-auto mb-3 flex items-center justify-center text-3xl font-bold text-blue-600">
+              ${username[0].toUpperCase()}
+            </div>
+            <h2 class="text-xl font-bold text-gray-800">@${username}</h2>
+            <p class="text-sm text-gray-600 mt-1">Decentralized Identity</p>
+            <div class="mt-4">
+              <label class="block text-xs text-gray-500 mb-1">Change Username</label>
+              <input type="text" id="newUsername" value="${username}" class="input-area px-4 py-2 w-full text-sm outline-none placeholder-white/70 text-gray-900 rounded-full text-center">
+              <button id="updateUsernameBtn" class="mt-3 bg-blue-500/80 backdrop-blur-md text-white px-6 py-2 rounded-full font-semibold shadow-lg hover:bg-blue-600/80 transition">
+                Update
+              </button>
+            </div>
+          </div>
+        `;
+        document.getElementById('updateUsernameBtn').addEventListener('click', updateUsername);
+      }
+
+      // ---------- Actions ----------
+      async function createPost() {
+        const input = document.getElementById('postInput');
+        const content = input.value.trim();
+        if (!content) return;
+        const post = {
+          id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2),
+          author: username,
+          content: content,
+          timestamp: Date.now(),
+          repostOf: null
+        };
+        await addToStore('posts', post);
+        posts.unshift(post);
+        sendBroadcast('post', post);
+        input.value = '';
+        renderFeed();
+      }
+
+      async function repost(postId) {
+        const original = posts.find(p => p.id === postId);
+        if (!original) return;
+        const repostContent = `🔄 Reposted from @${original.author}: ${original.content}`;
+        const post = {
+          id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2),
+          author: username,
+          content: repostContent,
+          timestamp: Date.now(),
+          repostOf: { author: original.author, content: original.content.substring(0, 50) + '...' }
+        };
+        await addToStore('posts', post);
+        posts.unshift(post);
+        sendBroadcast('post', post);
+        renderFeed();
+      }
+
+      async function sendChat() {
+        const input = document.getElementById('chatInput');
+        const text = input.value.trim();
+        if (!text) return;
+        const msg = {
+          id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2),
+          author: username,
+          text: text,
+          timestamp: Date.now()
+        };
+        await addToStore('messages', msg);
+        chatMessages.push(msg);
+        sendBroadcast('chat', msg);
+        input.value = '';
+        renderChat();
+      }
+
+      async function updateUsername() {
+        const newName = document.getElementById('newUsername').value.trim();
+        if (!newName || newName === username) return;
+        const oldUsername = username;
+        localStorage.setItem('socialUsername', newName);
+        username = newName;
+        // Notify others about name change (for presence updates)
+        sendBroadcast('username_change', { oldUsername, newUsername });
+        renderProfile();
+        // Also update active tab if needed (but we're on profile now)
+      }
+
+      function escapeHtml(text) {
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return text.replace(/[&<>"']/g, m => map[m]);
+      }
+
+      // ---------- Tab switching ----------
+      function setActiveTab(tab) {
+        activeTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`${tab}Tab`).classList.add('active');
+        if (tab === 'feed') renderFeed();
+        else if (tab === 'chat') renderChat();
+        else if (tab === 'profile') renderProfile();
+      }
+
+      document.getElementById('feedTab').addEventListener('click', () => setActiveTab('feed'));
+      document.getElementById('chatTab').addEventListener('click', () => setActiveTab('chat'));
+      document.getElementById('profileTab').addEventListener('click', () => setActiveTab('profile'));
+
+      // ---------- Initialization ----------
+      await openDB();
+      posts = await getAll('posts');
+      chatMessages = await getAll('messages');
+      
+      // Initial render
+      setActiveTab('feed');
+      updateOnlineCount();
+      
+      // Add self to online users (own presence)
+      onlineUsers.set(username, Date.now());
+    })();
+    </script>
+</body>
+
+</html>
