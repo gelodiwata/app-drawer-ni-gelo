@@ -221,7 +221,7 @@
                 let posts = [];
                 let chatMessages = [];
                 let activeTab = 'feed';
-                let onlineUsers = new Map(); // username -> lastSeen timestamp
+                let onlineUsers = new Map();
 
                 // ---------- Broadcast Channel (same‑device) ----------
                 const channel = new BroadcastChannel('decentralized-social');
@@ -249,11 +249,40 @@
                 let dataChannel = null;
                 let isWebRTCConnected = false;
 
+                // Default TURN server (free public relay, limited bandwidth but enough for text)
+                function getIceServers() {
+                    // Read from profile inputs if they exist, otherwise use defaults
+                    const stunInput = document.getElementById('stunServer').value.trim();
+                    const turnUrl = document.getElementById('turnUrl').value.trim();
+                    const turnUser = document.getElementById('turnUser').value.trim();
+                    const turnPass = document.getElementById('turnPass').value.trim();
+
+                    const servers = [];
+                    // STUN
+                    servers.push({
+                        urls: stunInput || 'stun:stun.l.google.com:19302'
+                    });
+                    // TURN (if credentials provided)
+                    if (turnUrl && turnUser && turnPass) {
+                        servers.push({
+                            urls: turnUrl,
+                            username: turnUser,
+                            credential: turnPass
+                        });
+                    } else {
+                        // Default public TURN (Metered.ca free tier – works for demo)
+                        servers.push({
+                            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject'
+                        });
+                    }
+                    return servers;
+                }
+
                 function createPeerConnection() {
                     const configuration = {
-                        iceServers: [{
-                            urls: 'stun:stun.l.google.com:19302'
-                        }]
+                        iceServers: getIceServers()
                     };
                     peerConnection = new RTCPeerConnection(configuration);
 
@@ -276,7 +305,6 @@
                     dataChannel.onopen = () => {
                         isWebRTCConnected = true;
                         updateConnectionBadge();
-                        // Send all existing posts and messages to the new peer (optional sync)
                         syncExistingData();
                     };
                     dataChannel.onmessage = (event) => {
@@ -338,7 +366,6 @@
                     if (!answerStr) return;
                     const answer = JSON.parse(answerStr);
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                    // Connection should now establish
                 }
 
                 async function joinWithOffer() {
@@ -374,9 +401,10 @@
                     dataChannel = null;
                     isWebRTCConnected = false;
                     updateConnectionBadge();
-                    // Clear SDP fields
-                    document.getElementById('localSDP') && (document.getElementById('localSDP').value = '');
-                    document.getElementById('remoteSDP') && (document.getElementById('remoteSDP').value = '');
+                    const localSDP = document.getElementById('localSDP');
+                    const remoteSDP = document.getElementById('remoteSDP');
+                    if (localSDP) localSDP.value = '';
+                    if (remoteSDP) remoteSDP.value = '';
                 }
 
                 // ---------- Universal data processing ----------
@@ -409,7 +437,7 @@
                     }
                 }
 
-                // ---------- Presence heartbeat (both broadcast and WebRTC) ----------
+                // ---------- Presence heartbeat ----------
                 setInterval(() => {
                     const presenceMsg = {
                         type: 'presence',
@@ -423,12 +451,10 @@
                     sendViaDataChannel(presenceMsg);
                 }, 4000);
 
-                // Initial presence
                 sendBroadcast('presence', {
                     username
                 });
 
-                // Cleanup stale online users
                 setInterval(() => {
                     const now = Date.now();
                     for (let [user, last] of onlineUsers.entries()) {
@@ -528,34 +554,47 @@
           </div>
           
           <!-- Cross‑device WebRTC connection panel -->
-          <div class="connection-panel p-4 text-white">
-            <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
+          <div class="connection-panel p-4 text-white text-sm">
+            <h3 class="text-base font-semibold mb-3 flex items-center gap-2">
               <span>🔗</span> Cross‑Device Connection
-              <span id="connStatus" class="text-xs ${isWebRTCConnected ? 'text-green-300' : 'text-gray-400'} ml-auto">${isWebRTCConnected ? 'Connected' : 'Disconnected'}</span>
+              <span id="connStatus" class="text-xs ml-auto ${isWebRTCConnected ? 'text-green-300' : 'text-gray-400'}">${isWebRTCConnected ? 'Connected' : 'Disconnected'}</span>
             </h3>
-            <div class="space-y-3 text-xs">
+            <div class="space-y-3">
+              <!-- STUN/TURN settings (optional, use defaults) -->
+              <details class="text-xs">
+                <summary class="cursor-pointer text-gray-300">⚙️ Advanced: STUN/TURN servers</summary>
+                <div class="mt-2 space-y-1">
+                  <input type="text" id="stunServer" placeholder="STUN server (default: stun:stun.l.google.com:19302)" class="w-full bg-black/30 rounded-lg p-1.5 text-white text-xs">
+                  <input type="text" id="turnUrl" placeholder="TURN URL (default: turn:openrelay.metered.ca:443)" class="w-full bg-black/30 rounded-lg p-1.5 text-white text-xs">
+                  <input type="text" id="turnUser" placeholder="TURN username" class="w-full bg-black/30 rounded-lg p-1.5 text-white text-xs">
+                  <input type="text" id="turnPass" placeholder="TURN password" class="w-full bg-black/30 rounded-lg p-1.5 text-white text-xs">
+                </div>
+              </details>
               <div>
                 <label class="block text-gray-300 mb-1">Your SDP (send to peer)</label>
-                <textarea id="localSDP" rows="3" readonly class="w-full bg-black/30 rounded-xl p-2 text-white outline-none"></textarea>
-                <button id="copyLocalBtn" class="mt-1 text-blue-300 underline">Copy</button>
+                <textarea id="localSDP" rows="3" readonly class="w-full bg-black/30 rounded-xl p-2 text-white outline-none text-xs"></textarea>
+                <button id="copyLocalBtn" class="mt-1 text-blue-300 underline text-xs">Copy</button>
               </div>
               <div>
                 <label class="block text-gray-300 mb-1">Peer's SDP (paste here)</label>
-                <textarea id="remoteSDP" rows="3" class="w-full bg-black/30 rounded-xl p-2 text-white outline-none" placeholder="Paste peer's SDP..."></textarea>
+                <textarea id="remoteSDP" rows="3" class="w-full bg-black/30 rounded-xl p-2 text-white outline-none text-xs" placeholder="Paste peer's SDP..."></textarea>
               </div>
               <div class="flex flex-wrap gap-2">
-                <button id="hostBtn" class="bg-indigo-500/70 px-4 py-2 rounded-full">📤 Host (create offer)</button>
-                <button id="joinBtn" class="bg-teal-500/70 px-4 py-2 rounded-full">📥 Join (answer offer)</button>
-                <button id="acceptAnswerBtn" class="bg-blue-500/70 px-4 py-2 rounded-full">✅ Accept Answer</button>
-                <button id="disconnectBtn" class="bg-red-500/70 px-4 py-2 rounded-full">❌ Disconnect</button>
+                <button id="hostBtn" class="bg-indigo-500/70 px-4 py-2 rounded-full text-xs">📤 Host (create offer)</button>
+                <button id="joinBtn" class="bg-teal-500/70 px-4 py-2 rounded-full text-xs">📥 Join (answer offer)</button>
+                <button id="acceptAnswerBtn" class="bg-blue-500/70 px-4 py-2 rounded-full text-xs">✅ Accept Answer</button>
+                <button id="disconnectBtn" class="bg-red-500/70 px-4 py-2 rounded-full text-xs">❌ Disconnect</button>
               </div>
               <p class="text-gray-400 text-xs mt-1">
-                To connect two devices: Host clicks "Create offer", copies the SDP, sends it to peer. Peer pastes it and clicks "Join", copies their SDP and sends back. Host pastes that answer and clicks "Accept Answer".
+                <strong>To connect across networks:</strong><br>
+                1. <strong>Host</strong> clicks "Host", copies the SDP (offer) and shares it with the peer (email, chat, etc.).<br>
+                2. <strong>Peer</strong> pastes that offer, clicks "Join", then copies their SDP (answer) and sends it back.<br>
+                3. <strong>Host</strong> pastes the answer, clicks "Accept Answer".<br>
+                ✅ Works even behind different NATs thanks to the TURN relay.
               </p>
             </div>
           </div>
         `;
-        // Event listeners for connection panel
         document.getElementById('updateUsernameBtn').addEventListener('click', updateUsername);
         document.getElementById('hostBtn').addEventListener('click', createHostOffer);
         document.getElementById('joinBtn').addEventListener('click', joinWithOffer);
@@ -582,7 +621,6 @@
         };
         await addToStore('posts', post);
         posts.unshift(post);
-        // Broadcast locally and via WebRTC
         sendBroadcast('post', post);
         sendViaDataChannel({ type: 'post', payload: post });
         input.value = '';
