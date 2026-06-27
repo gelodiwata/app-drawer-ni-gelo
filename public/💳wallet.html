@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Wallet - Virtual Bank QR Code Wallet</title>
+
+    <!-- TailwindCSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        system: [
+                            '-apple-system', 'BlinkMacSystemFont', 'SF Pro Display',
+                            'SF Pro Text', 'Helvetica Neue', 'Helvetica', 'Arial',
+                            'sans-serif'
+                        ],
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'float-delayed': 'float 8s ease-in-out 2s infinite',
+                        'float-slow': 'float 10s ease-in-out 4s infinite',
+                        'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
+                        'fade-in': 'fadeIn 0.35s ease-out',
+                        'slide-up': 'slideUp 0.4s cubic-bezier(0.22, 0.61, 0.36, 1)',
+                        'scale-in': 'scaleIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1)',
+                        'shimmer': 'shimmer 2.5s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': {
+                                transform: 'translateY(0px) scale(1)'
+                            },
+                            '50%': {
+                                transform: 'translateY(-20px) scale(1.05)'
+                            },
+                        },
+                        pulseSoft: {
+                            '0%, 100%': {
+                                opacity: '0.6'
+                            },
+                            '50%': {
+                                opacity: '1'
+                            },
+                        },
+                        fadeIn: {
+                            '0%': {
+                                opacity: '0'
+                            },
+                            '100%': {
+                                opacity: '1'
+                            },
+                        },
+                        slideUp: {
+                            '0%': {
+                                opacity: '0',
+                                transform: 'translateY(30px)'
+                            },
+                            '100%': {
+                                opacity: '1',
+                                transform: 'translateY(0)'
+                            },
+                        },
+                        scaleIn: {
+                            '0%': {
+                                opacity: '0',
+                                transform: 'scale(0.9)'
+                            },
+                            '100%': {
+                                opacity: '1',
+                                transform: 'scale(1)'
+                            },
+                        },
+                        shimmer: {
+                            '0%': {
+                                backgroundPosition: '-200% 0'
+                            },
+                            '100%': {
+                                backgroundPosition: '200% 0'
+                            },
+                        },
+                    },
+                },
+            },
+        };
+    </script>
+
+    <style>
+         :root {
+            --glass-bg: rgba(255, 255, 255, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.35);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+            --glass-bg-strong: rgba(255, 255, 255, 0.75);
+            --glass-bg-card: rgba(255, 255, 255, 0.6);
+            --accent-blue: #007AFF;
+            --accent-green: #34C759;
+            --accent-orange: #FF9500;
+            --accent-pink: #FF2D55;
+            --accent-purple: #AF52DE;
+            --accent-teal: #5AC8FA;
+        }
+        
+        * {
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: '-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+            background: linear-gradient(160deg, #f0f4f8 0%, #e8ecf2 25%, #f5f3f0 50%, #eef2f5 75%, #f2f0f5 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+        }
+        /* Background orbs */
+        
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.45;
+            pointer-events: none;
+            z-index: 0;
+            animation: float 8s ease-in-out infinite;
+        }
+        
+        .bg-orb-1 {
+            width: 280px;
+            height: 280px;
+            background: radial-gradient(circle, rgba(0, 122, 255, 0.25) 0%, transparent 70%);
+            top: -8%;
+            left: -15%;
+            animation-delay: 0s;
+        }
+        
+        .bg-orb-2 {
+            width: 320px;
+            height: 320px;
+            background: radial-gradient(circle, rgba(175, 82, 222, 0.22) 0%, transparent 70%);
+            bottom: -12%;
+            right: -18%;
+            animation-delay: 2.5s;
+            animation-duration: 9s;
+        }
+        
+        .bg-orb-3 {
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255, 149, 0, 0.18) 0%, transparent 70%);
+            top: 40%;
+            left: 50%;
+            animation-delay: 5s;
+            animation-duration: 7s;
+        }
+        
+        .bg-orb-4 {
+            width: 240px;
+            height: 240px;
+            background: radial-gradient(circle, rgba(52, 199, 89, 0.16) 0%, transparent 70%);
+            top: 55%;
+            right: -10%;
+            animation-delay: 1s;
+            animation-duration: 11s;
+        }
+        /* Main app shell */
+        
+        .app-shell {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 440px;
+            margin: 16px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 36px;
+            box-shadow: var(--glass-shadow), 0 0 0 0.5px rgba(255, 255, 255, 0.5) inset;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+            min-height: 560px;
+        }
+        /* Frosted header */
+        
+        .app-header {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(30px) saturate(160%);
+            -webkit-backdrop-filter: blur(30px) saturate(160%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+            padding: 18px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            border-radius: 36px 36px 0 0;
+        }
+        
+        .app-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #1a1a1e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .app-title .wallet-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+        }
+        /* Add button */
+        
+        .btn-add {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #007AFF 0%, #0066D6 100%);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+            box-shadow: 0 4px 16px rgba(0, 122, 255, 0.35);
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        
+        .btn-add:hover {
+            transform: scale(1.06);
+            box-shadow: 0 6px 22px rgba(0, 122, 255, 0.45);
+        }
+        
+        .btn-add:active {
+            transform: scale(0.94);
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+            transition: all 0.1s ease;
+        }
+        /* Cards area */
+        
+        .cards-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 18px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .cards-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .cards-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .cards-scroll::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.12);
+            border-radius: 20px;
+        }
+        /* Bank card */
+        
+        .bank-card {
+            background: var(--glass-bg-card);
+            backdrop-filter: blur(20px) saturate(140%);
+            -webkit-backdrop-filter: blur(20px) saturate(140%);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 24px;
+            padding: 16px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03);
+            position: relative;
+            animation: fadeIn 0.4s ease-out;
+            user-select: none;
+            -webkit-user-select: none;
+            min-height: 80px;
+        }
+        
+        .bank-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+            border-color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .bank-card:active {
+            transform: scale(0.975);
+            transition: all 0.12s ease;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        }
+        
+        .bank-card .card-accent {
+            width: 10px;
+            height: 52px;
+            border-radius: 20px;
+            flex-shrink: 0;
+        }
+        
+        .bank-card .card-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .bank-card .card-bank-name {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #1a1a1e;
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .bank-card .card-meta {
+            font-size: 0.78rem;
+            color: #8e8e93;
+            margin-top: 2px;
+            letter-spacing: -0.01em;
+        }
+        
+        .bank-card .card-qr-preview {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: white;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 2px solid rgba(0, 0, 0, 0.06);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .bank-card .card-qr-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 3px;
+        }
+        
+        .bank-card .btn-delete {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255, 45, 85, 0.1);
+            border: none;
+            color: #FF2D55;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.25s ease;
+            line-height: 1;
+            z-index: 2;
+        }
+        
+        .bank-card:hover .btn-delete,
+        .bank-card:focus-within .btn-delete {
+            opacity: 1;
+        }
+        
+        @media (hover: none) and (pointer: coarse) {
+            .bank-card .btn-delete {
+                opacity: 0.7;
+                width: 30px;
+                height: 30px;
+                top: 8px;
+                right: 8px;
+                background: rgba(255, 45, 85, 0.12);
+            }
+        }
+        
+        .bank-card .btn-delete:hover {
+            background: rgba(255, 45, 85, 0.2);
+            transform: scale(1.1);
+        }
+        
+        .bank-card .btn-delete:active {
+            transform: scale(0.9);
+            background: rgba(255, 45, 85, 0.3);
+        }
+        /* Empty state */
+        
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 24px;
+            flex: 1;
+            min-height: 300px;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .empty-state .empty-icon {
+            width: 90px;
+            height: 90px;
+            border-radius: 28px;
+            background: rgba(0, 122, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin-bottom: 20px;
+            animation: float 5s ease-in-out infinite;
+        }
+        
+        .empty-state h3 {
+            font-size: 1.25rem;
+            font-weight: 650;
+            color: #1a1a1e;
+            letter-spacing: -0.02em;
+            margin: 0 0 6px;
+        }
+        
+        .empty-state p {
+            font-size: 0.9rem;
+            color: #8e8e93;
+            margin: 0;
+            max-width: 260px;
+            line-height: 1.4;
+        }
+        /* QR Display Overlay */
+        
+        .qr-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(12px) saturate(100%);
+            -webkit-backdrop-filter: blur(12px) saturate(100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            animation: fadeIn 0.25s ease-out;
+        }
+        
+        .qr-overlay.hidden {
+            display: none;
+        }
+        
+        .qr-modal {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(30px) saturate(180%);
+            -webkit-backdrop-filter: blur(30px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 32px;
+            padding: 28px 24px 24px;
+            max-width: 380px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2), 0 0 0 0.5px rgba(255, 255, 255, 0.6) inset;
+            animation: scaleIn 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+            position: relative;
+        }
+        
+        .qr-modal .modal-bank-name {
+            font-size: 1.2rem;
+            font-weight: 650;
+            color: #1a1a1e;
+            letter-spacing: -0.02em;
+            margin: 0 0 6px;
+        }
+        
+        .qr-modal .modal-subtitle {
+            font-size: 0.82rem;
+            color: #8e8e93;
+            margin: 0 0 20px;
+            letter-spacing: -0.01em;
+        }
+        
+        .qr-modal .qr-image-container {
+            background: white;
+            border-radius: 20px;
+            padding: 16px;
+            display: inline-block;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            max-width: 280px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        
+        .qr-modal .qr-image-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 4px;
+            image-rendering: auto;
+        }
+        
+        .qr-modal .btn-close-modal {
+            margin-top: 20px;
+            padding: 12px 36px;
+            border-radius: 50px;
+            background: rgba(0, 0, 0, 0.06);
+            border: none;
+            color: #1a1a1e;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: -0.01em;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+        
+        .qr-modal .btn-close-modal:hover {
+            background: rgba(0, 0, 0, 0.1);
+            transform: scale(1.03);
+        }
+        
+        .qr-modal .btn-close-modal:active {
+            transform: scale(0.96);
+            background: rgba(0, 0, 0, 0.15);
+        }
+        /* Add modal */
+        
+        .add-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px) saturate(100%);
+            -webkit-backdrop-filter: blur(10px) saturate(100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            animation: fadeIn 0.25s ease-out;
+        }
+        
+        .add-overlay.hidden {
+            display: none;
+        }
+        
+        .add-modal {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(28px) saturate(170%);
+            -webkit-backdrop-filter: blur(28px) saturate(170%);
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            border-radius: 32px;
+            padding: 26px 22px 22px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(255, 255, 255, 0.5) inset;
+            animation: slideUp 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+        
+        .add-modal h3 {
+            font-size: 1.2rem;
+            font-weight: 650;
+            color: #1a1a1e;
+            letter-spacing: -0.02em;
+            margin: 0 0 16px;
+            text-align: center;
+        }
+        
+        .add-modal .preview-area {
+            width: 100%;
+            height: 140px;
+            border-radius: 18px;
+            background: rgba(0, 0, 0, 0.03);
+            border: 2px dashed rgba(0, 0, 0, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .add-modal .preview-area:hover {
+            border-color: rgba(0, 122, 255, 0.4);
+            background: rgba(0, 122, 255, 0.03);
+        }
+        
+        .add-modal .preview-area.has-image {
+            border-style: solid;
+            border-color: rgba(0, 0, 0, 0.08);
+            background: white;
+        }
+        
+        .add-modal .preview-area img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            padding: 8px;
+        }
+        
+        .add-modal .preview-placeholder {
+            color: #8e8e93;
+            font-size: 0.9rem;
+            text-align: center;
+            pointer-events: none;
+        }
+        
+        .add-modal .preview-placeholder .upload-icon {
+            font-size: 2.2rem;
+            display: block;
+            margin-bottom: 6px;
+        }
+        
+        .add-modal input[type="text"] {
+            width: 100%;
+            padding: 13px 16px;
+            border-radius: 14px;
+            border: 1.5px solid rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.7);
+            font-size: 0.95rem;
+            font-family: inherit;
+            letter-spacing: -0.01em;
+            color: #1a1a1e;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+            margin-bottom: 14px;
+            outline: none;
+        }
+        
+        .add-modal input[type="text"]:focus {
+            border-color: #007AFF;
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+            background: white;
+        }
+        
+        .add-modal input[type="text"]::placeholder {
+            color: #c7c7cc;
+        }
+        
+        .add-modal .btn-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .add-modal .btn-row button {
+            flex: 1;
+            padding: 13px;
+            border-radius: 50px;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: -0.01em;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-save {
+            background: #007AFF;
+            color: white;
+            box-shadow: 0 4px 14px rgba(0, 122, 255, 0.3);
+        }
+        
+        .btn-save:hover {
+            background: #0066D6;
+            box-shadow: 0 6px 20px rgba(0, 122, 255, 0.4);
+            transform: translateY(-1px);
+        }
+        
+        .btn-save:active {
+            transform: scale(0.96);
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+        }
+        
+        .btn-save:disabled {
+            background: #a0c4f0;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-cancel {
+            background: rgba(0, 0, 0, 0.05);
+            color: #3a3a3c;
+        }
+        
+        .btn-cancel:hover {
+            background: rgba(0, 0, 0, 0.09);
+        }
+        
+        .btn-cancel:active {
+            transform: scale(0.96);
+            background: rgba(0, 0, 0, 0.13);
+        }
+        /* Toast */
+        
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(0);
+            z-index: 200;
+            background: rgba(30, 30, 35, 0.92);
+            backdrop-filter: blur(20px) saturate(160%);
+            -webkit-backdrop-filter: blur(20px) saturate(160%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+            animation: slideUp 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+            pointer-events: none;
+            font-family: inherit;
+        }
+        
+        .toast.hidden {
+            display: none;
+        }
+        /* Responsive */
+        
+        @media (max-width: 480px) {
+            .app-shell {
+                margin: 8px;
+                border-radius: 28px;
+                max-height: 95vh;
+                min-height: 480px;
+            }
+            .app-header {
+                border-radius: 28px 28px 0 0;
+                padding: 14px 16px;
+            }
+            .app-title {
+                font-size: 1.35rem;
+            }
+            .cards-scroll {
+                padding: 12px 12px 16px;
+                gap: 10px;
+            }
+            .bank-card {
+                border-radius: 20px;
+                padding: 14px 14px;
+                gap: 10px;
+            }
+            .qr-modal {
+                border-radius: 26px;
+                padding: 22px 16px 18px;
+            }
+            .add-modal {
+                border-radius: 26px;
+                padding: 20px 16px 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Background Orbs -->
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+    <div class="bg-orb bg-orb-4"></div>
+
+    <!-- Main App Shell -->
+    <div class="app-shell" id="appShell">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="app-title">
+                <div class="wallet-icon">💳</div>
+                <span>Wallet</span>
+            </div>
+            <button class="btn-add" id="btnAdd" title="Add QR Code" aria-label="Add new QR code">
+                +
+            </button>
+        </header>
+
+        <!-- Cards Scroll Area -->
+        <div class="cards-scroll" id="cardsScroll">
+            <!-- Dynamically filled -->
+        </div>
+
+        <!-- Hidden file input -->
+        <input type="file" id="fileInput" accept="image/*" style="display:none;">
+    </div>
+
+    <!-- QR Display Overlay -->
+    <div class="qr-overlay hidden" id="qrOverlay">
+        <div class="qr-modal" id="qrModal">
+            <h3 class="modal-bank-name" id="modalBankName"></h3>
+            <p class="modal-subtitle">Present this QR code for payment</p>
+            <div class="qr-image-container">
+                <img src="" alt="QR Code" id="modalQrImage">
+            </div>
+            <button class="btn-close-modal" id="btnCloseQr">Close</button>
+        </div>
+    </div>
+
+    <!-- Add QR Overlay -->
+    <div class="add-overlay hidden" id="addOverlay">
+        <div class="add-modal" id="addModal">
+            <h3>Add QR Code</h3>
+            <div class="preview-area" id="previewArea">
+                <span class="preview-placeholder" id="previewPlaceholder">
+                    <span class="upload-icon">📷</span> Tap to select QR image
+                </span>
+                <img src="" alt="Preview" id="previewImage" style="display:none;">
+            </div>
+            <input type="text" id="bankNameInput" placeholder="Bank name (e.g., Chase, BofA)" maxlength="40">
+            <div class="btn-row">
+                <button class="btn-cancel" id="btnCancelAdd">Cancel</button>
+                <button class="btn-save" id="btnSaveAdd" disabled>Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast hidden" id="toast"></div>
+
+    <!-- Hidden file input for add modal -->
+    <input type="file" id="fileInputAdd" accept="image/*" style="display:none;">
+
+    <script>
+        (function() {
+            // ─────────────────────────────────────
+            // IndexedDB wrapper
+            // ─────────────────────────────────────
+            const DB_NAME = 'QRWalletDB';
+            const DB_VERSION = 1;
+            const STORE_NAME = 'qrCodes';
+
+            function openDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains(STORE_NAME)) {
+                            const store = db.createObjectStore(STORE_NAME, {
+                                keyPath: 'id',
+                                autoIncrement: true,
+                            });
+                            store.createIndex('createdAt', 'createdAt', {
+                                unique: false
+                            });
+                        }
+                    };
+                    request.onsuccess = (e) => resolve(e.target.result);
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            }
+
+            async function getAllQRCodes() {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readonly');
+                    const store = tx.objectStore(STORE_NAME);
+                    const index = store.index('createdAt');
+                    const request = index.getAll();
+                    request.onsuccess = () => {
+                        const results = request.result || [];
+                        // Sort newest first (reverse chronological)
+                        results.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                        resolve(results);
+                    };
+                    request.onerror = () => reject(request.error);
+                    tx.oncomplete = () => db.close();
+                });
+            }
+
+            async function addQRCode(name, imageData) {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readwrite');
+                    const store = tx.objectStore(STORE_NAME);
+                    const record = {
+                        name: name.trim(),
+                        imageData: imageData,
+                        createdAt: Date.now(),
+                    };
+                    const request = store.add(record);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                    tx.oncomplete = () => db.close();
+                });
+            }
+
+            async function deleteQRCode(id) {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readwrite');
+                    const store = tx.objectStore(STORE_NAME);
+                    const request = store.delete(id);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                    tx.oncomplete = () => db.close();
+                });
+            }
+
+            async function getQRCode(id) {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readonly');
+                    const store = tx.objectStore(STORE_NAME);
+                    const request = store.get(id);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                    tx.oncomplete = () => db.close();
+                });
+            }
+
+            // ─────────────────────────────────────
+            // Color palette for card accents
+            // ─────────────────────────────────────
+            const accentColors = [
+                '#007AFF', '#34C759', '#FF9500', '#FF2D55', '#AF52DE',
+                '#5AC8FA', '#FF6B35', '#00C7BE', '#FF375F', '#5856D6',
+                '#30B0C7', '#FF9F0A', '#64D2FF', '#FF6482', '#BF5AF2',
+            ];
+
+            function getAccentColor(name) {
+                let hash = 0;
+                for (let i = 0; i < name.length; i++) {
+                    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+                    hash = hash & hash;
+                }
+                const index = Math.abs(hash) % accentColors.length;
+                return accentColors[index];
+            }
+
+            // ─────────────────────────────────────
+            // DOM references
+            // ─────────────────────────────────────
+            const cardsScroll = document.getElementById('cardsScroll');
+            const qrOverlay = document.getElementById('qrOverlay');
+            const modalBankName = document.getElementById('modalBankName');
+            const modalQrImage = document.getElementById('modalQrImage');
+            const btnCloseQr = document.getElementById('btnCloseQr');
+            const btnAdd = document.getElementById('btnAdd');
+            const addOverlay = document.getElementById('addOverlay');
+            const previewArea = document.getElementById('previewArea');
+            const previewPlaceholder = document.getElementById('previewPlaceholder');
+            const previewImage = document.getElementById('previewImage');
+            const bankNameInput = document.getElementById('bankNameInput');
+            const btnSaveAdd = document.getElementById('btnSaveAdd');
+            const btnCancelAdd = document.getElementById('btnCancelAdd');
+            const fileInputAdd = document.getElementById('fileInputAdd');
+            const toast = document.getElementById('toast');
+
+            let selectedFileDataURL = null;
+            let toastTimer = null;
+
+            // ─────────────────────────────────────
+            // Toast
+            // ─────────────────────────────────────
+            function showToast(message, duration = 2200) {
+                if (toastTimer) clearTimeout(toastTimer);
+                toast.textContent = message;
+                toast.classList.remove('hidden');
+                toast.style.animation = 'none';
+                void toast.offsetWidth;
+                toast.style.animation = 'slideUp 0.35s cubic-bezier(0.22, 0.61, 0.36, 1)';
+                toastTimer = setTimeout(() => {
+                    toast.classList.add('hidden');
+                    toastTimer = null;
+                }, duration);
+            }
+
+            // ─────────────────────────────────────
+            // Render cards
+            // ─────────────────────────────────────
+            function createCardHTML(record) {
+                const accentColor = getAccentColor(record.name || 'Bank');
+                const dateStr = record.createdAt ?
+                    new Date(record.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                    }) :
+                    'Unknown date';
+
+                return `
+                    <div class="bank-card" data-id="${record.id}" role="button" tabindex="0" 
+                         aria-label="${escapeHTML(record.name)} - Tap to show QR code">
+                        <div class="card-accent" style="background:${accentColor};" aria-hidden="true"></div>
+                        <div class="card-info">
+                            <div class="card-bank-name">${escapeHTML(record.name || 'Unnamed Bank')}</div>
+                            <div class="card-meta">Added ${dateStr}</div>
+                        </div>
+                        <div class="card-qr-preview" aria-hidden="true">
+                            <img src="${record.imageData}" alt="QR preview" loading="lazy">
+                        </div>
+                        <button class="btn-delete" data-delete-id="${record.id}" 
+                                title="Delete this QR code" aria-label="Delete ${escapeHTML(record.name)}">
+                            ✕
+                        </button>
+                    </div>
+                `;
+            }
+
+            function escapeHTML(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            async function renderCards() {
+                const records = await getAllQRCodes();
+                if (records.length === 0) {
+                    cardsScroll.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">💳</div>
+                            <h3>No QR Codes Yet</h3>
+                            <p>Tap the <strong>+</strong> button above to add your first bank QR code and build your
+                                virtual wallet.</p>
+                        </div>
+                    `;
+                } else {
+                    cardsScroll.innerHTML = records.map(createCardHTML).join('');
+                }
+                attachCardEvents();
+            }
+
+            function attachCardEvents() {
+                // Card click → open QR overlay
+                const cards = cardsScroll.querySelectorAll('.bank-card');
+                cards.forEach((card) => {
+                    card.addEventListener('click', async(e) => {
+                        // Ignore if delete button was clicked
+                        if (e.target.closest('.btn-delete')) return;
+                        const id = Number(card.dataset.id);
+                        const record = await getQRCode(id);
+                        if (record) {
+                            openQROverlay(record);
+                        }
+                    });
+
+                    // Keyboard accessibility
+                    card.addEventListener('keydown', async(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            if (e.target.closest('.btn-delete')) return;
+                            const id = Number(card.dataset.id);
+                            const record = await getQRCode(id);
+                            if (record) {
+                                openQROverlay(record);
+                            }
+                        }
+                    });
+                });
+
+                // Delete buttons
+                const deleteButtons = cardsScroll.querySelectorAll('.btn-delete');
+                deleteButtons.forEach((btn) => {
+                    btn.addEventListener('click', async(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const id = Number(btn.dataset.deleteId);
+                        const record = await getQRCode(id);
+                        if (record) {
+                            const confirmed = confirm(
+                                `Delete the QR code for "${record.name}"?\n\nThis action cannot be undone.`
+                            );
+                            if (confirmed) {
+                                await deleteQRCode(id);
+                                const cardElement = cardsScroll.querySelector(`[data-id="${id}"]`);
+                                if (cardElement) {
+                                    cardElement.style.transition =
+                                        'all 0.3s ease';
+                                    cardElement.style.opacity = '0';
+                                    cardElement.style.transform =
+                                        'scale(0.9) translateX(20px)';
+                                    cardElement.style.maxHeight = cardElement
+                                        .offsetHeight + 'px';
+                                    setTimeout(() => {
+                                        cardElement.style.maxHeight =
+                                            '0';
+                                        cardElement.style.padding =
+                                            '0';
+                                        cardElement.style.margin =
+                                            '0';
+                                        cardElement.style.borderWidth =
+                                            '0';
+                                        cardElement.style.overflow =
+                                            'hidden';
+                                    }, 200);
+                                    setTimeout(async() => {
+                                        await renderCards();
+                                    }, 500);
+                                } else {
+                                    await renderCards();
+                                }
+                                showToast('QR code deleted');
+                            }
+                        }
+                    });
+                });
+            }
+
+            // ─────────────────────────────────────
+            // QR Overlay
+            // ─────────────────────────────────────
+            function openQROverlay(record) {
+                modalBankName.textContent = record.name || 'Bank';
+                modalQrImage.src = record.imageData;
+                modalQrImage.alt = `QR Code for ${record.name || 'Bank'}`;
+                qrOverlay.classList.remove('hidden');
+                qrOverlay.style.animation = 'none';
+                void qrOverlay.offsetWidth;
+                qrOverlay.style.animation = 'fadeIn 0.25s ease-out';
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeQROverlay() {
+                qrOverlay.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+
+            btnCloseQr.addEventListener('click', closeQROverlay);
+            qrOverlay.addEventListener('click', (e) => {
+                if (e.target === qrOverlay) {
+                    closeQROverlay();
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !qrOverlay.classList.contains('hidden')) {
+                    closeQROverlay();
+                }
+                if (e.key === 'Escape' && !addOverlay.classList.contains('hidden')) {
+                    closeAddOverlay();
+                }
+            });
+
+            // ─────────────────────────────────────
+            // Add Overlay
+            // ─────────────────────────────────────
+            function openAddOverlay() {
+                selectedFileDataURL = null;
+                previewImage.style.display = 'none';
+                previewPlaceholder.style.display = '';
+                previewArea.classList.remove('has-image');
+                bankNameInput.value = '';
+                btnSaveAdd.disabled = true;
+                fileInputAdd.value = '';
+                addOverlay.classList.remove('hidden');
+                addOverlay.style.animation = 'none';
+                void addOverlay.offsetWidth;
+                addOverlay.style.animation = 'fadeIn 0.25s ease-out';
+                document.body.style.overflow = 'hidden';
+                setTimeout(() => bankNameInput.focus(), 350);
+            }
+
+            function closeAddOverlay() {
+                addOverlay.classList.add('hidden');
+                document.body.style.overflow = '';
+                selectedFileDataURL = null;
+                previewImage.style.display = 'none';
+                previewPlaceholder.style.display = '';
+                previewArea.classList.remove('has-image');
+                bankNameInput.value = '';
+                btnSaveAdd.disabled = true;
+                fileInputAdd.value = '';
+            }
+
+            function updateSaveButton() {
+                btnSaveAdd.disabled = !(selectedFileDataURL && bankNameInput.value.trim().length > 0);
+            }
+
+            btnAdd.addEventListener('click', openAddOverlay);
+            btnCancelAdd.addEventListener('click', closeAddOverlay);
+            addOverlay.addEventListener('click', (e) => {
+                if (e.target === addOverlay) {
+                    closeAddOverlay();
+                }
+            });
+
+            // Preview area click → trigger file input
+            previewArea.addEventListener('click', () => {
+                fileInputAdd.click();
+            });
+
+            // File input change
+            fileInputAdd.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (!file.type.startsWith('image/')) {
+                    showToast('Please select an image file');
+                    fileInputAdd.value = '';
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    selectedFileDataURL = reader.result;
+                    previewImage.src = selectedFileDataURL;
+                    previewImage.style.display = 'block';
+                    previewPlaceholder.style.display = 'none';
+                    previewArea.classList.add('has-image');
+                    updateSaveButton();
+                };
+                reader.onerror = () => {
+                    showToast('Failed to read image. Please try again.');
+                    fileInputAdd.value = '';
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // Bank name input
+            bankNameInput.addEventListener('input', updateSaveButton);
+
+            // Save button
+            btnSaveAdd.addEventListener('click', async() => {
+                if (!selectedFileDataURL || !bankNameInput.value.trim()) return;
+                const name = bankNameInput.value.trim();
+                try {
+                    await addQRCode(name, selectedFileDataURL);
+                    closeAddOverlay();
+                    await renderCards();
+                    showToast(`"${name}" added to wallet`);
+                } catch (err) {
+                    console.error('Failed to save QR code:', err);
+                    showToast('Failed to save. Please try again.');
+                }
+            });
+
+            // Paste support (clipboard)
+            document.addEventListener('paste', async(e) => {
+                // Only handle paste when add overlay is open
+                if (addOverlay.classList.contains('hidden')) return;
+                const items = e.clipboardData.items;
+                if (!items) return;
+                for (const item of items) {
+                    if (item.type.startsWith('image/')) {
+                        e.preventDefault();
+                        const blob = item.getAsFile();
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            selectedFileDataURL = reader.result;
+                            previewImage.src = selectedFileDataURL;
+                            previewImage.style.display = 'block';
+                            previewPlaceholder.style.display = 'none';
+                            previewArea.classList.add('has-image');
+                            updateSaveButton();
+                            showToast('Image pasted from clipboard');
+                        };
+                        reader.onerror = () => {
+                            showToast('Failed to read pasted image');
+                        };
+                        reader.readAsDataURL(blob);
+                        break;
+                    }
+                }
+            });
+
+            // ─────────────────────────────────────
+            // Initialization
+            // ─────────────────────────────────────
+            async function init() {
+                try {
+                    await openDB();
+                    await renderCards();
+                } catch (err) {
+                    console.error('Failed to initialize database:', err);
+                    cardsScroll.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">⚠️</div>
+                            <h3>Storage Unavailable</h3>
+                            <p>Your browser doesn't support the storage needed for this app. Please use a modern browser or check your privacy settings.</p>
+                        </div>
+                    `;
+                    btnAdd.disabled = true;
+                    btnAdd.style.opacity = '0.5';
+                    btnAdd.style.cursor = 'not-allowed';
+                }
+            }
+
+            init();
+
+            // ─────────────────────────────────────
+            // Log
+            // ─────────────────────────────────────
+            console.log('💳 QR Wallet initialized');
+            console.log('   - Stores QR code images in IndexedDB');
+            console.log('   - Fully operable inside an iframe');
+            console.log('   - Inspired by modern iOS design language');
+            console.log('   - Tap + to add your first bank QR code');
+        })();
+    </script>
+</body>
+
+</html>
