@@ -7,8 +7,6 @@
     <title>Decentralized Social</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* iOS 27 inspired: frosted glass, dynamic island, soft animations */
-        
         body {
             background: radial-gradient(circle at 20% 20%, #ff9a9e 0%, #fad0c4 30%, #fad0c4 60%, #a18cd1 100%);
             background-attachment: fixed;
@@ -90,7 +88,6 @@
             border: 1px solid rgba(255, 255, 255, 0.25);
             border-radius: 28px;
         }
-        /* Scrollbar hidden */
         
         .no-scrollbar::-webkit-scrollbar {
             display: none;
@@ -99,6 +96,14 @@
         .no-scrollbar {
             -ms-overflow-style: none;
             scrollbar-width: none;
+        }
+        
+        .connection-panel {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
     </style>
 </head>
@@ -112,12 +117,13 @@
                 <span class="text-lg">🍃</span>
                 <span id="appTitle">Social</span>
                 <span class="bg-white/20 text-xs px-2 py-0.5 rounded-full ml-2" id="onlineCount">0 online</span>
+                <span id="connectionBadge" class="hidden bg-green-500/80 text-xs px-2 py-0.5 rounded-full ml-1">🌐 peer</span>
             </div>
         </div>
 
         <!-- Main Content Area -->
         <div class="flex-1 overflow-y-auto no-scrollbar px-4 py-2 space-y-4" id="mainContent">
-            <!-- Feed / Chat / Profile views injected here -->
+            <!-- Injected by JS -->
         </div>
 
         <!-- Bottom Tab Bar -->
@@ -217,7 +223,7 @@
                 let activeTab = 'feed';
                 let onlineUsers = new Map(); // username -> lastSeen timestamp
 
-                // ---------- Broadcast Channel ----------
+                // ---------- Broadcast Channel (same‑device) ----------
                 const channel = new BroadcastChannel('decentralized-social');
 
                 function sendBroadcast(type, payload) {
@@ -234,11 +240,149 @@
                         payload,
                         sender
                     } = event.data;
-                    if (sender === username) return; // ignore own messages
+                    if (sender === username) return;
+                    await processIncomingData(type, payload);
+                };
 
+                // ---------- WebRTC (cross‑device) ----------
+                let peerConnection = null;
+                let dataChannel = null;
+                let isWebRTCConnected = false;
+
+                function createPeerConnection() {
+                    const configuration = {
+                        iceServers: [{
+                            urls: 'stun:stun.l.google.com:19302'
+                        }]
+                    };
+                    peerConnection = new RTCPeerConnection(configuration);
+
+                    peerConnection.oniceconnectionstatechange = () => {
+                        if (peerConnection.iceConnectionState === 'disconnected' ||
+                            peerConnection.iceConnectionState === 'failed' ||
+                            peerConnection.iceConnectionState === 'closed') {
+                            isWebRTCConnected = false;
+                            updateConnectionBadge();
+                        }
+                    };
+
+                    peerConnection.ondatachannel = (event) => {
+                        dataChannel = event.channel;
+                        setupDataChannel();
+                    };
+                }
+
+                function setupDataChannel() {
+                    dataChannel.onopen = () => {
+                        isWebRTCConnected = true;
+                        updateConnectionBadge();
+                        // Send all existing posts and messages to the new peer (optional sync)
+                        syncExistingData();
+                    };
+                    dataChannel.onmessage = (event) => {
+                        const msg = JSON.parse(event.data);
+                        processIncomingData(msg.type, msg.payload);
+                    };
+                    dataChannel.onclose = () => {
+                        isWebRTCConnected = false;
+                        updateConnectionBadge();
+                    };
+                }
+
+                async function syncExistingData() {
+                    if (!dataChannel || dataChannel.readyState !== 'open') return;
+                    const allPosts = await getAll('posts');
+                    const allMessages = await getAll('messages');
+                    for (const post of allPosts) {
+                        dataChannel.send(JSON.stringify({
+                            type: 'post',
+                            payload: post
+                        }));
+                    }
+                    for (const msg of allMessages) {
+                        dataChannel.send(JSON.stringify({
+                            type: 'chat',
+                            payload: msg
+                        }));
+                    }
+                }
+
+                function sendViaDataChannel(data) {
+                    if (dataChannel && dataChannel.readyState === 'open') {
+                        dataChannel.send(JSON.stringify(data));
+                    }
+                }
+
+                function updateConnectionBadge() {
+                    const badge = document.getElementById('connectionBadge');
+                    if (isWebRTCConnected) {
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                }
+
+                async function createHostOffer() {
+                    createPeerConnection();
+                    dataChannel = peerConnection.createDataChannel('social');
+                    setupDataChannel();
+
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    await waitForIceGatheringComplete();
+                    document.getElementById('localSDP').value = JSON.stringify(peerConnection.localDescription);
+                }
+
+                async function acceptAnswer() {
+                    const answerStr = document.getElementById('remoteSDP').value.trim();
+                    if (!answerStr) return;
+                    const answer = JSON.parse(answerStr);
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                    // Connection should now establish
+                }
+
+                async function joinWithOffer() {
+                    const offerStr = document.getElementById('remoteSDP').value.trim();
+                    if (!offerStr) return;
+                    createPeerConnection();
+                    peerConnection.ondatachannel = (event) => {
+                        dataChannel = event.channel;
+                        setupDataChannel();
+                    };
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(offerStr)));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    await waitForIceGatheringComplete();
+                    document.getElementById('localSDP').value = JSON.stringify(peerConnection.localDescription);
+                }
+
+                function waitForIceGatheringComplete() {
+                    return new Promise(resolve => {
+                        if (peerConnection.iceGatheringState === 'complete') resolve();
+                        else {
+                            peerConnection.onicegatheringstatechange = () => {
+                                if (peerConnection.iceGatheringState === 'complete') resolve();
+                            };
+                        }
+                    });
+                }
+
+                function disconnectWebRTC() {
+                    if (dataChannel) dataChannel.close();
+                    if (peerConnection) peerConnection.close();
+                    peerConnection = null;
+                    dataChannel = null;
+                    isWebRTCConnected = false;
+                    updateConnectionBadge();
+                    // Clear SDP fields
+                    document.getElementById('localSDP') && (document.getElementById('localSDP').value = '');
+                    document.getElementById('remoteSDP') && (document.getElementById('remoteSDP').value = '');
+                }
+
+                // ---------- Universal data processing ----------
+                async function processIncomingData(type, payload) {
                     switch (type) {
                         case 'post':
-                            // Avoid duplicates by checking ID
                             const existingPost = await getItem('posts', payload.id);
                             if (!existingPost) {
                                 await addToStore('posts', payload);
@@ -255,23 +399,28 @@
                             }
                             break;
                         case 'presence':
-                            onlineUsers.set(sender, Date.now());
+                            onlineUsers.set(payload.username, Date.now());
                             updateOnlineCount();
                             break;
                         case 'username_change':
-                            // Update online users map (re-key) - simply add new, old will expire
                             onlineUsers.set(payload.newUsername, Date.now());
                             updateOnlineCount();
-                            // Update posts/messages author display? We'll rely on stored author.
                             break;
                     }
-                };
+                }
 
-                // Heartbeat
+                // ---------- Presence heartbeat (both broadcast and WebRTC) ----------
                 setInterval(() => {
+                    const presenceMsg = {
+                        type: 'presence',
+                        payload: {
+                            username
+                        }
+                    };
                     sendBroadcast('presence', {
                         username
                     });
+                    sendViaDataChannel(presenceMsg);
                 }, 4000);
 
                 // Initial presence
@@ -279,7 +428,7 @@
                     username
                 });
 
-                // Cleanup stale online users (no ping for 8 seconds)
+                // Cleanup stale online users
                 setInterval(() => {
                     const now = Date.now();
                     for (let [user, last] of onlineUsers.entries()) {
@@ -295,7 +444,6 @@
                 // ---------- UI Rendering ----------
                 function renderFeed() {
                     const container = document.getElementById('mainContent');
-                    // Sort posts by timestamp descending
                     const sorted = [...posts].sort((a, b) => b.timestamp - a.timestamp);
                     container.innerHTML = `
           <div class="flex items-center gap-2 mb-4">
@@ -323,7 +471,6 @@
             `).join('')}
           </div>
         `;
-        // Event listeners
         document.getElementById('postBtn').addEventListener('click', createPost);
         document.getElementById('postInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') createPost(); });
         document.querySelectorAll('.repostBtn').forEach(btn => {
@@ -365,7 +512,7 @@
       function renderProfile() {
         const container = document.getElementById('mainContent');
         container.innerHTML = `
-          <div class="glass p-6 rounded-3xl text-center">
+          <div class="glass p-6 rounded-3xl text-center mb-4">
             <div class="w-20 h-20 bg-blue-200 rounded-full mx-auto mb-3 flex items-center justify-center text-3xl font-bold text-blue-600">
               ${username[0].toUpperCase()}
             </div>
@@ -379,8 +526,46 @@
               </button>
             </div>
           </div>
+          
+          <!-- Cross‑device WebRTC connection panel -->
+          <div class="connection-panel p-4 text-white">
+            <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
+              <span>🔗</span> Cross‑Device Connection
+              <span id="connStatus" class="text-xs ${isWebRTCConnected ? 'text-green-300' : 'text-gray-400'} ml-auto">${isWebRTCConnected ? 'Connected' : 'Disconnected'}</span>
+            </h3>
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="block text-gray-300 mb-1">Your SDP (send to peer)</label>
+                <textarea id="localSDP" rows="3" readonly class="w-full bg-black/30 rounded-xl p-2 text-white outline-none"></textarea>
+                <button id="copyLocalBtn" class="mt-1 text-blue-300 underline">Copy</button>
+              </div>
+              <div>
+                <label class="block text-gray-300 mb-1">Peer's SDP (paste here)</label>
+                <textarea id="remoteSDP" rows="3" class="w-full bg-black/30 rounded-xl p-2 text-white outline-none" placeholder="Paste peer's SDP..."></textarea>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button id="hostBtn" class="bg-indigo-500/70 px-4 py-2 rounded-full">📤 Host (create offer)</button>
+                <button id="joinBtn" class="bg-teal-500/70 px-4 py-2 rounded-full">📥 Join (answer offer)</button>
+                <button id="acceptAnswerBtn" class="bg-blue-500/70 px-4 py-2 rounded-full">✅ Accept Answer</button>
+                <button id="disconnectBtn" class="bg-red-500/70 px-4 py-2 rounded-full">❌ Disconnect</button>
+              </div>
+              <p class="text-gray-400 text-xs mt-1">
+                To connect two devices: Host clicks "Create offer", copies the SDP, sends it to peer. Peer pastes it and clicks "Join", copies their SDP and sends back. Host pastes that answer and clicks "Accept Answer".
+              </p>
+            </div>
+          </div>
         `;
+        // Event listeners for connection panel
         document.getElementById('updateUsernameBtn').addEventListener('click', updateUsername);
+        document.getElementById('hostBtn').addEventListener('click', createHostOffer);
+        document.getElementById('joinBtn').addEventListener('click', joinWithOffer);
+        document.getElementById('acceptAnswerBtn').addEventListener('click', acceptAnswer);
+        document.getElementById('disconnectBtn').addEventListener('click', disconnectWebRTC);
+        document.getElementById('copyLocalBtn').addEventListener('click', () => {
+          const localSDP = document.getElementById('localSDP');
+          localSDP.select();
+          document.execCommand('copy');
+        });
       }
 
       // ---------- Actions ----------
@@ -397,7 +582,9 @@
         };
         await addToStore('posts', post);
         posts.unshift(post);
+        // Broadcast locally and via WebRTC
         sendBroadcast('post', post);
+        sendViaDataChannel({ type: 'post', payload: post });
         input.value = '';
         renderFeed();
       }
@@ -416,6 +603,7 @@
         await addToStore('posts', post);
         posts.unshift(post);
         sendBroadcast('post', post);
+        sendViaDataChannel({ type: 'post', payload: post });
         renderFeed();
       }
 
@@ -432,6 +620,7 @@
         await addToStore('messages', msg);
         chatMessages.push(msg);
         sendBroadcast('chat', msg);
+        sendViaDataChannel({ type: 'chat', payload: msg });
         input.value = '';
         renderChat();
       }
@@ -442,10 +631,9 @@
         const oldUsername = username;
         localStorage.setItem('socialUsername', newName);
         username = newName;
-        // Notify others about name change (for presence updates)
         sendBroadcast('username_change', { oldUsername, newUsername });
+        sendViaDataChannel({ type: 'username_change', payload: { oldUsername, newUsername } });
         renderProfile();
-        // Also update active tab if needed (but we're on profile now)
       }
 
       function escapeHtml(text) {
@@ -472,11 +660,8 @@
       posts = await getAll('posts');
       chatMessages = await getAll('messages');
       
-      // Initial render
       setActiveTab('feed');
       updateOnlineCount();
-      
-      // Add self to online users (own presence)
       onlineUsers.set(username, Date.now());
     })();
     </script>
