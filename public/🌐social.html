@@ -145,6 +145,15 @@
 
     <script>
         (async function() {
+                // ---------- Polyfill safe UUID ----------
+                function generateUUID() {
+                    try {
+                        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+                    } catch (e) {}
+                    // Fallback
+                    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+                }
+
                 // ---------- IndexedDB Setup ----------
                 const DB_NAME = 'DecentralizedSocialDB';
                 const DB_VERSION = 1;
@@ -249,20 +258,16 @@
                 let dataChannel = null;
                 let isWebRTCConnected = false;
 
-                // Default TURN server (free public relay, limited bandwidth but enough for text)
                 function getIceServers() {
-                    // Read from profile inputs if they exist, otherwise use defaults
-                    const stunInput = document.getElementById('stunServer').value.trim();
-                    const turnUrl = document.getElementById('turnUrl').value.trim();
-                    const turnUser = document.getElementById('turnUser').value.trim();
-                    const turnPass = document.getElementById('turnPass').value.trim();
+                    // Safely read from profile inputs (they exist only when profile tab is active)
+                    const stunInput = document.getElementById('stunServer').value.trim() || 'stun:stun.l.google.com:19302';
+                    const turnUrl = document.getElementById('turnUrl').value.trim() || '';
+                    const turnUser = document.getElementById('turnUser').value.trim() || '';
+                    const turnPass = document.getElementById('turnPass').value.trim() || '';
 
-                    const servers = [];
-                    // STUN
-                    servers.push({
-                        urls: stunInput || 'stun:stun.l.google.com:19302'
-                    });
-                    // TURN (if credentials provided)
+                    const servers = [{
+                        urls: stunInput
+                    }];
                     if (turnUrl && turnUser && turnPass) {
                         servers.push({
                             urls: turnUrl,
@@ -270,7 +275,7 @@
                             credential: turnPass
                         });
                     } else {
-                        // Default public TURN (Metered.ca free tier – works for demo)
+                        // Public TURN relay (works across any network)
                         servers.push({
                             urls: 'turn:openrelay.metered.ca:443?transport=tcp',
                             username: 'openrelayproject',
@@ -281,6 +286,9 @@
                 }
 
                 function createPeerConnection() {
+                    if (!window.RTCPeerConnection) {
+                        throw new Error('WebRTC is not supported in this browser.');
+                    }
                     const configuration = {
                         iceServers: getIceServers()
                     };
@@ -292,6 +300,11 @@
                             peerConnection.iceConnectionState === 'closed') {
                             isWebRTCConnected = false;
                             updateConnectionBadge();
+                            updateConnectionStatus(false);
+                        } else if (peerConnection.iceConnectionState === 'connected') {
+                            isWebRTCConnected = true;
+                            updateConnectionBadge();
+                            updateConnectionStatus(true);
                         }
                     };
 
@@ -305,6 +318,7 @@
                     dataChannel.onopen = () => {
                         isWebRTCConnected = true;
                         updateConnectionBadge();
+                        updateConnectionStatus(true);
                         syncExistingData();
                     };
                     dataChannel.onmessage = (event) => {
@@ -314,6 +328,7 @@
                     dataChannel.onclose = () => {
                         isWebRTCConnected = false;
                         updateConnectionBadge();
+                        updateConnectionStatus(false);
                     };
                 }
 
@@ -350,37 +365,99 @@
                     }
                 }
 
-                async function createHostOffer() {
-                    createPeerConnection();
-                    dataChannel = peerConnection.createDataChannel('social');
-                    setupDataChannel();
+                function updateConnectionStatus(connected) {
+                    const statusEl = document.getElementById('connStatus');
+                    if (statusEl) {
+                        statusEl.textContent = connected ? 'Connected' : 'Disconnected';
+                        statusEl.className = 'text-xs ml-auto ' + (connected ? 'text-green-300' : 'text-gray-400');
+                    }
+                }
 
-                    const offer = await peerConnection.createOffer();
-                    await peerConnection.setLocalDescription(offer);
-                    await waitForIceGatheringComplete();
-                    document.getElementById('localSDP').value = JSON.stringify(peerConnection.localDescription);
+                async function createHostOffer() {
+                    const hostBtn = document.getElementById('hostBtn');
+                    try {
+                        hostBtn.disabled = true;
+                        hostBtn.textContent = '⏳ Creating...';
+
+                        createPeerConnection();
+                        dataChannel = peerConnection.createDataChannel('social');
+                        setupDataChannel();
+
+                        const offer = await peerConnection.createOffer();
+                        await peerConnection.setLocalDescription(offer);
+                        await waitForIceGatheringComplete();
+
+                        const localSDP = document.getElementById('localSDP');
+                        if (localSDP) {
+                            localSDP.value = JSON.stringify(peerConnection.localDescription);
+                        }
+                        hostBtn.textContent = '📤 Host (create offer)';
+                        hostBtn.disabled = false;
+                    } catch (e) {
+                        hostBtn.textContent = '📤 Host (create offer)';
+                        hostBtn.disabled = false;
+                        alert('Host failed: ' + e.message);
+                        console.error(e);
+                        // Clean up
+                        if (peerConnection) peerConnection.close();
+                        peerConnection = null;
+                    }
                 }
 
                 async function acceptAnswer() {
-                    const answerStr = document.getElementById('remoteSDP').value.trim();
-                    if (!answerStr) return;
-                    const answer = JSON.parse(answerStr);
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                    const acceptBtn = document.getElementById('acceptAnswerBtn');
+                    try {
+                        acceptBtn.disabled = true;
+                        acceptBtn.textContent = '⏳ Accepting...';
+
+                        const answerStr = document.getElementById('remoteSDP').value.trim();
+                        if (!answerStr) throw new Error('No answer SDP provided.');
+                        const answer = JSON.parse(answerStr);
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+
+                        acceptBtn.textContent = '✅ Accept Answer';
+                        acceptBtn.disabled = false;
+                    } catch (e) {
+                        acceptBtn.textContent = '✅ Accept Answer';
+                        acceptBtn.disabled = false;
+                        alert('Accept failed: ' + e.message);
+                        console.error(e);
+                    }
                 }
 
                 async function joinWithOffer() {
-                    const offerStr = document.getElementById('remoteSDP').value.trim();
-                    if (!offerStr) return;
-                    createPeerConnection();
-                    peerConnection.ondatachannel = (event) => {
-                        dataChannel = event.channel;
-                        setupDataChannel();
-                    };
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(offerStr)));
-                    const answer = await peerConnection.createAnswer();
-                    await peerConnection.setLocalDescription(answer);
-                    await waitForIceGatheringComplete();
-                    document.getElementById('localSDP').value = JSON.stringify(peerConnection.localDescription);
+                    const joinBtn = document.getElementById('joinBtn');
+                    try {
+                        joinBtn.disabled = true;
+                        joinBtn.textContent = '⏳ Joining...';
+
+                        const offerStr = document.getElementById('remoteSDP').value.trim();
+                        if (!offerStr) throw new Error('No offer SDP provided.');
+
+                        createPeerConnection();
+                        peerConnection.ondatachannel = (event) => {
+                            dataChannel = event.channel;
+                            setupDataChannel();
+                        };
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(offerStr)));
+                        const answer = await peerConnection.createAnswer();
+                        await peerConnection.setLocalDescription(answer);
+                        await waitForIceGatheringComplete();
+
+                        const localSDP = document.getElementById('localSDP');
+                        if (localSDP) {
+                            localSDP.value = JSON.stringify(peerConnection.localDescription);
+                        }
+                        joinBtn.textContent = '📥 Join (answer offer)';
+                        joinBtn.disabled = false;
+                    } catch (e) {
+                        joinBtn.textContent = '📥 Join (answer offer)';
+                        joinBtn.disabled = false;
+                        alert('Join failed: ' + e.message);
+                        console.error(e);
+                        if (peerConnection) peerConnection.close();
+                        peerConnection = null;
+                    }
                 }
 
                 function waitForIceGatheringComplete() {
@@ -401,6 +478,7 @@
                     dataChannel = null;
                     isWebRTCConnected = false;
                     updateConnectionBadge();
+                    updateConnectionStatus(false);
                     const localSDP = document.getElementById('localSDP');
                     const remoteSDP = document.getElementById('remoteSDP');
                     if (localSDP) localSDP.value = '';
@@ -560,7 +638,6 @@
               <span id="connStatus" class="text-xs ml-auto ${isWebRTCConnected ? 'text-green-300' : 'text-gray-400'}">${isWebRTCConnected ? 'Connected' : 'Disconnected'}</span>
             </h3>
             <div class="space-y-3">
-              <!-- STUN/TURN settings (optional, use defaults) -->
               <details class="text-xs">
                 <summary class="cursor-pointer text-gray-300">⚙️ Advanced: STUN/TURN servers</summary>
                 <div class="mt-2 space-y-1">
@@ -595,6 +672,7 @@
             </div>
           </div>
         `;
+        // Attach event listeners after DOM is ready
         document.getElementById('updateUsernameBtn').addEventListener('click', updateUsername);
         document.getElementById('hostBtn').addEventListener('click', createHostOffer);
         document.getElementById('joinBtn').addEventListener('click', joinWithOffer);
@@ -613,7 +691,7 @@
         const content = input.value.trim();
         if (!content) return;
         const post = {
-          id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2),
+          id: generateUUID(),
           author: username,
           content: content,
           timestamp: Date.now(),
@@ -632,7 +710,7 @@
         if (!original) return;
         const repostContent = `🔄 Reposted from @${original.author}: ${original.content}`;
         const post = {
-          id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2),
+          id: generateUUID(),
           author: username,
           content: repostContent,
           timestamp: Date.now(),
@@ -650,7 +728,7 @@
         const text = input.value.trim();
         if (!text) return;
         const msg = {
-          id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2),
+          id: generateUUID(),
           author: username,
           text: text,
           timestamp: Date.now()
