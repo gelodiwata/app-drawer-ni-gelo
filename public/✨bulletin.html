@@ -708,8 +708,8 @@
                             });
                             // Sort by createdAt desc
                             announcements.sort((a, b) => {
-                                const ta = a.createdAt.toMillis() || a.createdAt || 0;
-                                const tb = b.createdAt.toMillis() || b.createdAt || 0;
+                                const ta = a ? a.createdAt || a.createdAt : 0;
+                                const tb = b ? b.createdAt || b.createdAt : 0;
                                 return tb - ta;
                             });
                             allAnnouncements = announcements;
@@ -781,6 +781,19 @@
                                 return tb - ta;
                             });
                             allPolls = polls;
+
+                            function safeTimestamp(doc) {
+                                const val = doc.createdAt;
+                                if (val && typeof val.toMillis === 'function') return vsal.toMillis();
+                                if (val instanceof Date) return val.getTime();
+                                return 0;
+                            }
+
+                            // Inside announcements listener, replace the sort:
+                            allAnnouncements = announcements.sort((a, b) => safeTimestamp(b) - safeTimestamp(a));
+
+                            // Inside polls listener, do the same:
+                            allPolls = polls.sort((a, b) => safeTimestamp(b) - safeTimestamp(a));
                             saveSeenIds('seenPollIds', seenPollIds);
                             renderPolls();
                         }, (error) => {
@@ -799,7 +812,7 @@
                     </div>`;
                     } else {
                         announcementsList.innerHTML = allAnnouncements.map((a, i) => {
-                            const date = a.createdAt.toDate() || new Date(a.createdAt || Date.now());
+                            const date = a.createdAt || new Date(a.createdAt || Date.now());
                             const timeStr = formatTimeAgo(date);
                             const isNew = !seenAnnouncementIds.has(a.id) && a.deviceId !== deviceId;
                             return `
@@ -831,7 +844,7 @@
                     </div>`;
                     } else {
                         pollsList.innerHTML = allPolls.map((p, i) => {
-                                    const date = p.createdAt.toDate() || new Date(p.createdAt || Date.now());
+                                    const date = p.createdAt || new Date(p.createdAt || Date.now());
                                     const timeStr = formatTimeAgo(date);
                                     const hasVoted = votedPollIds.has(p.id) || (p.voters && p.voters.includes(
                                         deviceId));
