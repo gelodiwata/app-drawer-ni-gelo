@@ -832,7 +832,7 @@
                     </div>`;
                     } else {
                         pollsList.innerHTML = allPolls.map((p, i) => {
-                                    const date = p.createdAt.toDate() || new Date(p.createdAt || Date.now());
+                                    const date = p.createdAt || new Date(p.createdAt || Date.now());
                                     const timeStr = formatTimeAgo(date);
                                     const hasVoted = votedPollIds.has(p.id) || (p.voters && p.voters.includes(
                                         deviceId));
