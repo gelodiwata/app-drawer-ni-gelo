@@ -66,7 +66,7 @@ const RendererComponent = ({ filePath, onBack }: any) => {
           height: '100vh',
           border: 'none',
         }}
-        sandbox="allow-scripts allow-same-origin allow-modals"
+        sandbox="allow-scripts allow-same-origin allow-modals allow-forms"
       />
     </div>
   );
