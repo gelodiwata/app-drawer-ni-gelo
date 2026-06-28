@@ -798,7 +798,7 @@
                     </div>`;
                     } else {
                         announcementsList.innerHTML = allAnnouncements.map((a, i) => {
-                            const date = a.createdAt.toDate() || new Date(a.createdAt || Date.now());
+                            const date = a.createdAt || new Date(a.createdAt || Date.now());
                             const timeStr = formatTimeAgo(date);
                             const isNew = !seenAnnouncementIds.has(a.id) && a.deviceId !== deviceId;
                             return `
