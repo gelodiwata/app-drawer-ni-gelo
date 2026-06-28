@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Poll & Announcement App</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        'primary-dark': '#4f46e5',
+                        'primary-light': '#a5b4fc',
+                        accent: '#f59e0b',
+                        surface: '#f8fafc',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                    animation: {
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'fade-in': 'fadeIn 0.25s ease-out',
+                        'pulse-soft': 'pulseSoft 2s infinite',
+                        'bounce-in': 'bounceIn 0.4s ease-out',
+                    },
+                    keyframes: {
+                        slideUp: {
+                            '0%': {
+                                transform: 'translateY(100%)',
+                                opacity: '0'
+                            },
+                            '100%': {
+                                transform: 'translateY(0)',
+                                opacity: '1'
+                            },
+                        },
+                        fadeIn: {
+                            '0%': {
+                                opacity: '0'
+                            },
+                            '100%': {
+                                opacity: '1'
+                            },
+                        },
+                        pulseSoft: {
+                            '0%, 100%': {
+                                opacity: '1'
+                            },
+                            '50%': {
+                                opacity: '0.7'
+                            },
+                        },
+                        bounceIn: {
+                            '0%': {
+                                transform: 'scale(0.9)',
+                                opacity: '0'
+                            },
+                            '60%': {
+                                transform: 'scale(1.03)',
+                                opacity: '1'
+                            },
+                            '100%': {
+                                transform: 'scale(1)',
+                                opacity: '1'
+                            },
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+
+    <!-- Firebase SDKs (compat for single-file usage) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js">
+    </script>
+
+    <style>
+         :root {
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        
+        * {
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background: #f1f5f9;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+        }
+        
+        .pb-safe {
+            padding-bottom: calc(1rem + var(--safe-bottom));
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .card-hover:active {
+            transform: scale(0.975);
+            transition: transform 0.1s ease;
+        }
+        
+        .nav-item {
+            transition: all 0.2s ease;
+        }
+        
+        .nav-item:active {
+            transform: scale(0.9);
+        }
+        
+        @keyframes notifyGlow {
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 0 14px rgba(99, 102, 241, 0);
+            }
+        }
+        
+        .notify-glow {
+            animation: notifyGlow 1.5s ease-in-out;
+        }
+        
+        input[type="text"],
+        textarea {
+            font-size: 16px !important;
+        }
+    </style>
+</head>
+
+<body class="font-sans bg-slate-100 min-h-screen flex justify-center">
+
+    <!-- App Container (mobile-width) -->
+    <div id="app-container" class="w-full max-w-md bg-white min-h-screen relative shadow-2xl overflow-hidden flex flex-col">
+
+        <!-- ========== SETUP SCREEN ========== -->
+        <div id="setup-screen" class="hidden flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div class="text-6xl mb-4">⚙️</div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">Firebase Setup Required</h2>
+            <p class="text-slate-500 mb-6 text-sm leading-relaxed">
+                Please configure your Firebase project settings below.<br> These will be saved in your browser's local storage.
+            </p>
+            <div class="w-full space-y-3 text-left">
+                <input type="text" id="cfg-apiKey" placeholder="API Key" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                <input type="text" id="cfg-authDomain" placeholder="Auth Domain (e.g., project.firebaseapp.com)" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                <input type="text" id="cfg-projectId" placeholder="Project ID" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                <input type="text" id="cfg-storageBucket" placeholder="Storage Bucket" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                <input type="text" id="cfg-messagingSenderId" placeholder="Messaging Sender ID" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+                <input type="text" id="cfg-appId" placeholder="App ID" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none">
+            </div>
+            <button id="btn-save-config" class="mt-5 w-full bg-primary text-white font-semibold py-3 rounded-xl text-base hover:bg-primary-dark active:scale-95 transition-all">
+            Save & Connect
+        </button>
+            <p class="text-xs text-slate-400 mt-4">
+                Config is stored locally. Get these values from your Firebase Console → Project Settings.
+            </p>
+        </div>
+
+        <!-- ========== MAIN APP ========== -->
+        <div id="main-app" class="hidden flex flex-col flex-1 h-full">
+
+            <!-- Header -->
+            <header class="bg-gradient-to-r from-primary to-primary-dark text-white px-5 pt-12 pb-4 safe-top shadow-lg rounded-b-3xl z-10">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight">Community Hub</h1>
+                        <p class="text-xs text-primary-light opacity-90">Stay connected, stay informed</p>
+                    </div>
+                    <div class="relative">
+                        <button id="btn-notification-bell" class="relative p-2 rounded-full hover:bg-white/10 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        <span id="badge-unread" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-bounce-in">
+                            0
+                        </span>
+                    </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <main class="flex-1 overflow-y-auto scrollbar-hide px-4 pt-4 pb-safe" id="content-area">
+                <!-- Tab: Announcements -->
+                <div id="tab-announcements" class="space-y-3 animate-fade-in">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-lg font-bold text-slate-700">📢 Announcements</h2>
+                        <span id="announcement-count" class="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">0 items</span>
+                    </div>
+                    <div id="announcements-list" class="space-y-3">
+                        <div class="text-center py-12 text-slate-400">
+                            <div class="text-5xl mb-3">📭</div>
+                            <p class="text-sm">No announcements yet</p>
+                            <p class="text-xs">Create one to get started!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Polls -->
+                <div id="tab-polls" class="hidden space-y-3 animate-fade-in">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-lg font-bold text-slate-700">📊 Polls</h2>
+                        <span id="poll-count" class="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">0 items</span>
+                    </div>
+                    <div id="polls-list" class="space-y-3">
+                        <div class="text-center py-12 text-slate-400">
+                            <div class="text-5xl mb-3">🗳️</div>
+                            <p class="text-sm">No polls available</p>
+                            <p class="text-xs">Create one to gather opinions!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Create -->
+                <div id="tab-create" class="hidden animate-fade-in">
+                    <h2 class="text-lg font-bold text-slate-700 mb-4">✨ Create New</h2>
+                    <!-- Toggle -->
+                    <div class="flex bg-slate-100 rounded-xl p-1 mb-5">
+                        <button id="toggle-announcement" class="flex-1 py-2.5 rounded-lg font-semibold text-sm transition-all bg-white shadow-sm text-primary">
+                        📢 Announcement
+                    </button>
+                        <button id="toggle-poll" class="flex-1 py-2.5 rounded-lg font-semibold text-sm transition-all text-slate-500">
+                        📊 Poll
+                    </button>
+                    </div>
+                    <!-- Announcement Form -->
+                    <form id="form-announcement" class="space-y-4">
+                        <input type="text" id="ann-title" placeholder="Announcement Title *" required class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-slate-50">
+                        <textarea id="ann-body" rows="4" placeholder="Write your announcement details here... *" required class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-slate-50 resize-none"></textarea>
+                        <button type="submit" class="w-full bg-primary text-white font-semibold py-3.5 rounded-xl text-base hover:bg-primary-dark active:scale-95 transition-all shadow-lg shadow-primary/30">
+                    🚀 Post Announcement
+                </button>
+                    </form>
+                    <!-- Poll Form -->
+                    <form id="form-poll" class="hidden space-y-4">
+                        <input type="text" id="poll-question" placeholder="Poll Question *" required class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-slate-50">
+                        <div id="poll-options-container" class="space-y-2">
+                            <div class="flex gap-2 items-center poll-option-row">
+                                <input type="text" placeholder="Option 1 *" required class="poll-option-input flex-1 px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-slate-50">
+                                <button type="button" class="btn-remove-option text-red-400 hover:text-red-600 p-2 hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                            </div>
+                            <div class="flex gap-2 items-center poll-option-row">
+                                <input type="text" placeholder="Option 2 *" required class="poll-option-input flex-1 px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-slate-50">
+                                <button type="button" class="btn-remove-option text-red-400 hover:text-red-600 p-2 hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                            </div>
+                        </div>
+                        <button type="button" id="btn-add-option" class="w-full py-2.5 border-2 border-dashed border-slate-300 rounded-xl text-sm text-slate-500 font-medium hover:border-primary hover:text-primary transition-colors">
+                + Add Option
+            </button>
+                        <button type="submit" class="w-full bg-accent text-white font-semibold py-3.5 rounded-xl text-base hover:bg-amber-600 active:scale-95 transition-all shadow-lg shadow-accent/30">
+            📊 Create Poll
+        </button>
+                    </form>
+                </div>
+
+                <!-- Tab: Notifications Log -->
+                <div id="tab-notifications" class="hidden space-y-3 animate-fade-in">
+                    <h2 class="text-lg font-bold text-slate-700 mb-2">🔔 Notification History</h2>
+                    <div id="notifications-log-list" class="space-y-2">
+                        <div class="text-center py-12 text-slate-400">
+                            <div class="text-5xl mb-3">🔕</div>
+                            <p class="text-sm">No notifications yet</p>
+                            <p class="text-xs">You'll see them here when new content arrives</p>
+                        </div>
+                    </div>
+                    <button id="btn-request-permission" class="hidden w-full bg-slate-100 text-slate-700 font-semibold py-3 rounded-xl text-sm hover:bg-slate-200 transition-colors mt-4">
+        🔔 Enable Browser Notifications
+    </button>
+                </div>
+            </main>
+
+            <!-- Bottom Navigation -->
+            <nav class="bg-white border-t border-slate-200 px-2 pt-2 pb-safe z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+                <div class="flex justify-around items-center">
+                    <button data-tab="announcements" class="nav-item nav-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+            <span class="text-xs font-medium">Feed</span>
+        </button>
+                    <button data-tab="polls" class="nav-item nav-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <span class="text-xs font-medium">Polls</span>
+        </button>
+                    <button data-tab="create" class="nav-item nav-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400">
+            <div class="bg-slate-100 rounded-full p-2 -mt-3 shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            </div>
+            <span class="text-xs font-medium mt-0.5">Create</span>
+        </button>
+                    <button data-tab="notifications" class="nav-item nav-btn flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            <span class="text-xs font-medium">Alerts</span>
+        </button>
+                </div>
+            </nav>
+        </div>
+
+        <!-- ========== TOAST CONTAINER ========== -->
+        <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-[90%] max-w-md pointer-events-none"></div>
+
+        <!-- ========== CONFIRMATION MODAL OVERLAY ========== -->
+        <div id="modal-overlay" class="hidden fixed inset-0 bg-black/40 z-40 flex items-end sm:items-center justify-center p-4">
+            <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-slide-up">
+                <h3 id="modal-title" class="text-lg font-bold text-slate-800 mb-2">Confirm</h3>
+                <p id="modal-message" class="text-sm text-slate-500 mb-5"></p>
+                <div class="flex gap-3">
+                    <button id="modal-cancel" class="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">Cancel</button>
+                    <button id="modal-confirm" class="flex-1 py-3 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary-dark transition-colors">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+                // ==================== DOM REFS ====================
+                const $ = (sel) => document.querySelector(sel);
+                const $$ = (sel) => document.querySelectorAll(sel);
+
+                const appContainer = $('#app-container');
+                const setupScreen = $('#setup-screen');
+                const mainApp = $('#main-app');
+                const contentArea = $('#content-area');
+                const toastContainer = $('#toast-container');
+                const modalOverlay = $('#modal-overlay');
+                const modalTitle = $('#modal-title');
+                const modalMessage = $('#modal-message');
+                const modalCancel = $('#modal-cancel');
+                const modalConfirm = $('#modal-confirm');
+                const badgeUnread = $('#badge-unread');
+                const btnNotificationBell = $('#btn-notification-bell');
+                const btnRequestPermission = $('#btn-request-permission');
+
+                // Tabs
+                const tabAnnouncements = $('#tab-announcements');
+                const tabPolls = $('#tab-polls');
+                const tabCreate = $('#tab-create');
+                const tabNotifications = $('#tab-notifications');
+                const allTabs = [tabAnnouncements, tabPolls, tabCreate, tabNotifications];
+                const allNavBtns = $$('.nav-btn');
+
+                // Lists
+                const announcementsList = $('#announcements-list');
+                const pollsList = $('#polls-list');
+                const notificationsLogList = $('#notifications-log-list');
+                const announcementCount = $('#announcement-count');
+                const pollCount = $('#poll-count');
+
+                // Forms
+                const formAnnouncement = $('#form-announcement');
+                const formPoll = $('#form-poll');
+                const toggleAnnouncementBtn = $('#toggle-announcement');
+                const togglePollBtn = $('#toggle-poll');
+                const pollOptionsContainer = $('#poll-options-container');
+                const btnAddOption = $('#btn-add-option');
+
+                // Config inputs
+                const cfgApiKey = $('#cfg-apiKey');
+                const cfgAuthDomain = $('#cfg-authDomain');
+                const cfgProjectId = $('#cfg-projectId');
+                const cfgStorageBucket = $('#cfg-storageBucket');
+                const cfgMessagingSenderId = $('#cfg-messagingSenderId');
+                const cfgAppId = $('#cfg-appId');
+                const btnSaveConfig = $('#btn-save-config');
+
+                // ==================== STATE ====================
+                let firebaseConfig = null;
+                let firebaseApp = null;
+                let db = null;
+                let auth = null;
+                let messaging = null;
+                let currentUserUid = null;
+                let deviceId = null;
+                let activeTab = 'announcements';
+                let createMode = 'announcement'; // 'announcement' | 'poll'
+                let seenAnnouncementIds = new Set();
+                let seenPollIds = new Set();
+                let unreadCount = 0;
+                let notificationLog = [];
+                let allAnnouncements = [];
+                let allPolls = [];
+                let votedPollIds = new Set();
+                let modalResolve = null;
+                let unsubscribeAnnouncements = null;
+                let unsubscribePolls = null;
+
+                // ==================== LOCAL STORAGE ====================
+                function getStoredConfig() {
+                    try {
+                        const stored = localStorage.getItem('firebaseConfig');
+                        return stored ? JSON.parse(stored) : null;
+                    } catch {
+                        return null;
+                    }
+                }
+
+                function saveConfigToStorage(config) {
+                    localStorage.setItem('firebaseConfig', JSON.stringify(config));
+                }
+
+                function getDeviceId() {
+                    let id = localStorage.getItem('deviceId');
+                    if (!id) {
+                        id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                        localStorage.setItem('deviceId', id);
+                    }
+                    return id;
+                }
+
+                function getSeenIds(key) {
+                    try {
+                        const data = localStorage.getItem(key);
+                        return data ? new Set(JSON.parse(data)) : new Set();
+                    } catch {
+                        return new Set();
+                    }
+                }
+
+                function saveSeenIds(key, idsSet) {
+                    localStorage.setItem(key, JSON.stringify([...idsSet]));
+                }
+
+                function getVotedPollIds() {
+                    try {
+                        const data = localStorage.getItem('votedPollIds');
+                        return data ? new Set(JSON.parse(data)) : new Set();
+                    } catch {
+                        return new Set();
+                    }
+                }
+
+                function saveVotedPollId(pollId) {
+                    votedPollIds.add(pollId);
+                    localStorage.setItem('votedPollIds', JSON.stringify([...votedPollIds]));
+                }
+
+                function getNotificationLog() {
+                    try {
+                        const data = localStorage.getItem('notificationLog');
+                        return data ? JSON.parse(data) : [];
+                    } catch {
+                        return [];
+                    }
+                }
+
+                function saveNotificationLog(log) {
+                    notificationLog = log.slice(0, 50);
+                    localStorage.setItem('notificationLog', JSON.stringify(notificationLog));
+                }
+
+                // ==================== TOAST ====================
+                function showToast(message, type = 'info') {
+                    const colors = {
+                        info: 'bg-slate-800 text-white',
+                        success: 'bg-emerald-600 text-white',
+                        error: 'bg-red-500 text-white',
+                        warning: 'bg-amber-500 text-white',
+                    };
+                    const icons = {
+                        info: 'ℹ️',
+                        success: '✅',
+                        error: '❌',
+                        warning: '⚠️',
+                    };
+                    const toast = document.createElement('div');
+                    toast.className =
+                        `${colors[type] || colors.info} px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 animate-slide-up pointer-events-auto`;
+                    toast.innerHTML = `<span>${icons[type] || ''}</span><span>${message}</span>`;
+                    toastContainer.appendChild(toast);
+                    setTimeout(() => {
+                        toast.style.opacity = '0';
+                        toast.style.transform = 'translateY(-20px)';
+                        toast.style.transition = 'all 0.3s ease';
+                        setTimeout(() => toast.remove(), 300);
+                    }, 3500);
+                }
+
+                // ==================== MODAL ====================
+                function showModal(title, message, confirmText = 'Confirm') {
+                    return new Promise((resolve) => {
+                        modalResolve = resolve;
+                        modalTitle.textContent = title;
+                        modalMessage.textContent = message;
+                        modalConfirm.textContent = confirmText;
+                        modalOverlay.classList.remove('hidden');
+                    });
+                }
+
+                function hideModal() {
+                    modalOverlay.classList.add('hidden');
+                    if (modalResolve) {
+                        modalResolve(false);
+                        modalResolve = null;
+                    }
+                }
+
+                modalCancel.addEventListener('click', () => {
+                    if (modalResolve) modalResolve(false);
+                    hideModal();
+                });
+                modalConfirm.addEventListener('click', () => {
+                    if (modalResolve) modalResolve(true);
+                    hideModal();
+                });
+                modalOverlay.addEventListener('click', (e) => {
+                    if (e.target === modalOverlay) hideModal();
+                });
+
+                // ==================== BROWSER NOTIFICATIONS ====================
+                function requestNotificationPermission() {
+                    if (!('Notification' in window)) {
+                        showToast('Browser notifications not supported', 'warning');
+                        return Promise.resolve('denied');
+                    }
+                    if (Notification.permission === 'granted') {
+                        return Promise.resolve('granted');
+                    }
+                    if (Notification.permission === 'denied') {
+                        return Promise.resolve('denied');
+                    }
+                    return Notification.requestPermission();
+                }
+
+                function sendBrowserNotification(title, body, tag) {
+                    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+                    try {
+                        const notif = new Notification(title, {
+                            body: body,
+                            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%236366f1" width="100" height="100" rx="20"/><text x="50" y="65" text-anchor="middle" fill="white" font-size="40">📢</text></svg>',
+                            tag: tag,
+                            requireInteraction: false,
+                            vibrate: [200, 100, 200],
+                        });
+                        setTimeout(() => notif.close(), 6000);
+                    } catch (e) {
+                        console.warn('Notification failed:', e);
+                    }
+                }
+
+                function addToNotificationLog(item) {
+                    notificationLog.unshift({
+                        ...item,
+                        timestamp: new Date().toISOString(),
+                    });
+                    saveNotificationLog(notificationLog);
+                    renderNotificationLog();
+                    updateBadge();
+                }
+
+                function updateBadge() {
+                    if (unreadCount > 0) {
+                        badgeUnread.classList.remove('hidden');
+                        badgeUnread.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                        badgeUnread.classList.add('animate-bounce-in');
+                        setTimeout(() => badgeUnread.classList.remove('animate-bounce-in'), 400);
+                    } else {
+                        badgeUnread.classList.add('hidden');
+                    }
+                }
+
+                function markAllRead() {
+                    unreadCount = 0;
+                    updateBadge();
+                }
+
+                // ==================== FIREBASE INIT ====================
+                async function initializeFirebase(config) {
+                    try {
+                        if (firebaseApp) {
+                            if (unsubscribeAnnouncements) unsubscribeAnnouncements();
+                            if (unsubscribePolls) unsubscribePolls();
+                            await firebaseApp.delete().catch(() => {});
+                            firebaseApp = null;
+                            db = null;
+                            auth = null;
+                            messaging = null;
+                        }
+
+                        firebaseApp = firebase.initializeApp(config);
+                        db = firebase.firestore();
+                        auth = firebase.auth();
+
+                        // Enable Firestore offline persistence
+                        try {
+                            await db.enablePersistence({
+                                synchronizeTabs: true
+                            });
+                        } catch (e) {
+                            console.warn('Offline persistence not available:', e.code);
+                        }
+
+                        // Anonymous auth
+                        const userCredential = await auth.signInAnonymously();
+                        currentUserUid = userCredential.user.uid;
+                        console.log('Signed in anonymously:', currentUserUid);
+
+                        // Messaging
+                        try {
+                            messaging = firebase.messaging();
+                            // Request FCM token (optional, for server-side push)
+                            const token = await messaging.getToken({
+                                vapidKey: config.vapidKey || undefined,
+                            });
+                            console.log('FCM Token:', token);
+                        } catch (e) {
+                            console.warn('FCM not fully configured:', e.message);
+                            messaging = null;
+                        }
+
+                        // Set up Firestore listeners
+                        setupFirestoreListeners();
+
+                        return true;
+                    } catch (error) {
+                        console.error('Firebase init error:', error);
+                        showToast('Failed to connect: ' + error.message, 'error');
+                        return false;
+                    }
+                }
+
+                function setupFirestoreListeners() {
+                    if (!db) return;
+
+                    // Listen for announcements
+                    if (unsubscribeAnnouncements) unsubscribeAnnouncements();
+                    unsubscribeAnnouncements = db.collection('announcements')
+                        .orderBy('createdAt', 'desc')
+                        .limit(100)
+                        .onSnapshot((snapshot) => {
+                            const announcements = [];
+                            snapshot.docChanges().forEach((change) => {
+                                const data = change.doc.data();
+                                const doc = {
+                                    id: change.doc.id,
+                                    ...data
+                                };
+                                if (change.type === 'added') {
+                                    announcements.push(doc);
+                                    // Check if this is a new announcement (not seen before)
+                                    if (!seenAnnouncementIds.has(doc.id) && doc.deviceId !== deviceId) {
+                                        seenAnnouncementIds.add(doc.id);
+                                        saveSeenIds('seenAnnouncementIds', seenAnnouncementIds);
+                                        unreadCount++;
+                                        updateBadge();
+                                        sendBrowserNotification(
+                                            '📢 New Announcement',
+                                            doc.title || 'A new announcement was posted',
+                                            'ann-' + doc.id
+                                        );
+                                        addToNotificationLog({
+                                            type: 'announcement',
+                                            title: doc.title,
+                                            id: doc.id,
+                                            message: 'New announcement: ' + (doc.title || 'Untitled'),
+                                        });
+                                    }
+                                    seenAnnouncementIds.add(doc.id);
+                                }
+                                if (change.type === 'modified') {
+                                    const idx = announcements.findIndex(a => a.id === doc.id);
+                                    if (idx >= 0) announcements[idx] = doc;
+                                    else announcements.push(doc);
+                                }
+                                if (change.type === 'removed') {
+                                    const idx = announcements.findIndex(a => a.id === doc.id);
+                                    if (idx >= 0) announcements.splice(idx, 1);
+                                    seenAnnouncementIds.delete(doc.id);
+                                }
+                            });
+                            // Also add existing docs from initial load
+                            snapshot.docs.forEach((doc) => {
+                                const data = doc.data();
+                                const existing = announcements.find(a => a.id === doc.id);
+                                if (!existing) {
+                                    announcements.push({
+                                        id: doc.id,
+                                        ...data
+                                    });
+                                    seenAnnouncementIds.add(doc.id);
+                                }
+                            });
+                            // Sort by createdAt desc
+                            announcements.sort((a, b) => {
+                                const ta = a.createdAt.toMillis() || a.createdAt || 0;
+                                const tb = b.createdAt.toMillis() || b.createdAt || 0;
+                                return tb - ta;
+                            });
+                            allAnnouncements = announcements;
+                            saveSeenIds('seenAnnouncementIds', seenAnnouncementIds);
+                            renderAnnouncements();
+                        }, (error) => {
+                            console.error('Announcements listener error:', error);
+                        });
+
+                    // Listen for polls
+                    if (unsubscribePolls) unsubscribePolls();
+                    unsubscribePolls = db.collection('polls')
+                        .orderBy('createdAt', 'desc')
+                        .limit(100)
+                        .onSnapshot((snapshot) => {
+                            const polls = [];
+                            snapshot.docChanges().forEach((change) => {
+                                const data = change.doc.data();
+                                const doc = {
+                                    id: change.doc.id,
+                                    ...data
+                                };
+                                if (change.type === 'added') {
+                                    polls.push(doc);
+                                    if (!seenPollIds.has(doc.id) && doc.deviceId !== deviceId) {
+                                        seenPollIds.add(doc.id);
+                                        saveSeenIds('seenPollIds', seenPollIds);
+                                        unreadCount++;
+                                        updateBadge();
+                                        sendBrowserNotification(
+                                            '📊 New Poll',
+                                            doc.question || 'A new poll was created',
+                                            'poll-' + doc.id
+                                        );
+                                        addToNotificationLog({
+                                            type: 'poll',
+                                            title: doc.question,
+                                            id: doc.id,
+                                            message: 'New poll: ' + (doc.question || 'Untitled'),
+                                        });
+                                    }
+                                    seenPollIds.add(doc.id);
+                                }
+                                if (change.type === 'modified') {
+                                    const idx = polls.findIndex(p => p.id === doc.id);
+                                    if (idx >= 0) polls[idx] = doc;
+                                    else polls.push(doc);
+                                }
+                                if (change.type === 'removed') {
+                                    const idx = polls.findIndex(p => p.id === doc.id);
+                                    if (idx >= 0) polls.splice(idx, 1);
+                                    seenPollIds.delete(doc.id);
+                                }
+                            });
+                            snapshot.docs.forEach((doc) => {
+                                const data = doc.data();
+                                const existing = polls.find(p => p.id === doc.id);
+                                if (!existing) {
+                                    polls.push({
+                                        id: doc.id,
+                                        ...data
+                                    });
+                                    seenPollIds.add(doc.id);
+                                }
+                            });
+                            polls.sort((a, b) => {
+                                const ta = a.createdAt.toMillis() || a.createdAt || 0;
+                                const tb = b.createdAt.toMillis() || b.createdAt || 0;
+                                return tb - ta;
+                            });
+                            allPolls = polls;
+                            saveSeenIds('seenPollIds', seenPollIds);
+                            renderPolls();
+                        }, (error) => {
+                            console.error('Polls listener error:', error);
+                        });
+                }
+
+                // ==================== RENDER ====================
+                function renderAnnouncements() {
+                    if (allAnnouncements.length === 0) {
+                        announcementsList.innerHTML = `
+                    <div class="text-center py-12 text-slate-400">
+                        <div class="text-5xl mb-3">📭</div>
+                        <p class="text-sm">No announcements yet</p>
+                        <p class="text-xs">Create one to get started!</p>
+                    </div>`;
+                    } else {
+                        announcementsList.innerHTML = allAnnouncements.map((a, i) => {
+                            const date = a.createdAt.toDate() || new Date(a.createdAt || Date.now());
+                            const timeStr = formatTimeAgo(date);
+                            const isNew = !seenAnnouncementIds.has(a.id) && a.deviceId !== deviceId;
+                            return `
+                        <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm card-hover transition-all ${isNew ? 'notify-glow border-primary/30' : ''} animate-fade-in" style="animation-delay: ${i * 0.05}s">
+                            <div class="flex items-start gap-3">
+                                <div class="bg-primary/10 rounded-xl p-2.5 flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-semibold text-slate-800 text-sm leading-snug">${escapeHtml(a.title || 'Untitled')}</h3>
+                                    <p class="text-slate-500 text-xs mt-1 leading-relaxed whitespace-pre-wrap">${escapeHtml(a.body || '')}</p>
+                                    <span class="inline-block mt-2 text-[11px] text-slate-400">${timeStr}</span>
+                                </div>
+                                ${isNew ? '<span class="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0">NEW</span>' : ''}
+                            </div>
+                        </div>`;
+                        }).join('');
+                    }
+                    announcementCount.textContent = `${allAnnouncements.length} item${allAnnouncements.length !== 1 ? 's' : ''}`;
+                }
+
+                function renderPolls() {
+                    if (allPolls.length === 0) {
+                        pollsList.innerHTML = `
+                    <div class="text-center py-12 text-slate-400">
+                        <div class="text-5xl mb-3">🗳️</div>
+                        <p class="text-sm">No polls available</p>
+                        <p class="text-xs">Create one to gather opinions!</p>
+                    </div>`;
+                    } else {
+                        pollsList.innerHTML = allPolls.map((p, i) => {
+                                    const date = p.createdAt.toDate() || new Date(p.createdAt || Date.now());
+                                    const timeStr = formatTimeAgo(date);
+                                    const hasVoted = votedPollIds.has(p.id) || (p.voters && p.voters.includes(
+                                        deviceId));
+                                    const totalVotes = p.totalVotes || Object.values(p.options || {}).reduce((sum,
+                                        o) => sum + (o.votes || 0), 0);
+                                    const isNew = !seenPollIds.has(p.id) && p.deviceId !== deviceId;
+                                    const options = p.options || {};
+
+                                    let optionsHtml = '';
+                                    const optionKeys = Object.keys(options);
+                                    optionKeys.forEach((key) => {
+                                        const opt = options[key];
+                                        const votes = opt.votes || 0;
+                                        const percentage = totalVotes > 0 ? Math.round((votes /
+                                            totalVotes) * 100) : 0;
+                                        const isLeading = totalVotes > 0 && votes === Math.max(
+                                            ...optionKeys.map(k => options[k].votes || 0));
+                                        optionsHtml += `
+                            <div class="mb-2 last:mb-0">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs font-medium text-slate-700">${escapeHtml(opt.text || key)}</span>
+                                    <span class="text-xs text-slate-400">${votes} vote${votes !== 1 ? 's' : ''} (${percentage}%)</span>
+                                </div>
+                                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                                    <div class="h-full rounded-full transition-all duration-500 ease-out ${isLeading ? 'bg-primary' : 'bg-slate-300'}" style="width: ${percentage}%"></div>
+                                </div>
+                            </div>`;
+                                    });
+
+                                    let actionHtml = '';
+                                    if (!hasVoted) {
+                                        actionHtml = `
+                            <div class="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
+                                <p class="text-[11px] text-slate-400 mb-1">Tap to vote:</p>
+                                ${optionKeys.map(key => `
+                                    <button data-poll-id="${p.id}" data-option-key="${key}" 
+                                        class="btn-vote w-full text-left px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-primary hover:text-white hover:border-primary transition-all active:scale-[0.97]">
+                                        ${escapeHtml(options[key]?.text || key)}
+                                    </button>
+                                `).join('')}
+                            </div>`;
+                    } else {
+                        actionHtml = `
+                            <div class="mt-3 pt-3 border-t border-slate-100">
+                                <span class="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                    You voted
+                                </span>
+                            </div>`;
+                    }
+
+                    return `
+                        <div class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm card-hover transition-all ${isNew ? 'notify-glow border-primary/30' : ''} animate-fade-in" style="animation-delay: ${i * 0.05}s">
+                            <div class="flex items-start gap-3 mb-3">
+                                <div class="bg-accent/10 rounded-xl p-2.5 flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-semibold text-slate-800 text-sm leading-snug">${escapeHtml(p.question || 'Untitled Poll')}</h3>
+                                    <span class="text-[11px] text-slate-400">${timeStr} · ${totalVotes} total vote${totalVotes !== 1 ? 's' : ''}</span>
+                                </div>
+                                ${isNew ? '<span class="bg-accent text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0">NEW</span>' : ''}
+                            </div>
+                            ${optionsHtml}
+                            ${actionHtml}
+                        </div>`;
+                }).join('');
+            }
+            pollCount.textContent = `${allPolls.length} poll${allPolls.length !== 1 ? 's' : ''}`;
+
+            // Attach vote listeners
+            $$('.btn-vote').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const pollId = this.dataset.pollId;
+                    const optionKey = this.dataset.optionKey;
+                    await voteOnPoll(pollId, optionKey);
+                });
+            });
+        }
+
+        function renderNotificationLog() {
+            if (notificationLog.length === 0) {
+                notificationsLogList.innerHTML = `
+                    <div class="text-center py-12 text-slate-400">
+                        <div class="text-5xl mb-3">🔕</div>
+                        <p class="text-sm">No notifications yet</p>
+                        <p class="text-xs">You'll see them here when new content arrives</p>
+                    </div>`;
+            } else {
+                notificationsLogList.innerHTML = notificationLog.map((n, i) => {
+                    const icon = n.type === 'poll' ? '📊' : '📢';
+                    const date = new Date(n.timestamp);
+                    const timeStr = formatTimeAgo(date);
+                    return `
+                        <div class="flex items-start gap-3 bg-white border border-slate-100 rounded-xl p-3 shadow-sm animate-fade-in" style="animation-delay: ${i * 0.03}s">
+                            <span class="text-xl flex-shrink-0">${icon}</span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-medium text-slate-700">${escapeHtml(n.message)}</p>
+                                <span class="text-[10px] text-slate-400">${timeStr}</span>
+                            </div>
+                        </div>`;
+                }).join('');
+            }
+            updateBadge();
+        }
+
+        function updateBadge() {
+            if (unreadCount > 0) {
+                badgeUnread.classList.remove('hidden');
+                badgeUnread.textContent = unreadCount > 99 ? '99+' : unreadCount;
+            } else {
+                badgeUnread.classList.add('hidden');
+            }
+        }
+
+        // ==================== VOTING ====================
+        async function voteOnPoll(pollId, optionKey) {
+            if (!db) {
+                showToast('Database not connected', 'error');
+                return;
+            }
+            if (votedPollIds.has(pollId)) {
+                showToast('You already voted on this poll', 'warning');
+                return;
+            }
+            try {
+                const pollRef = db.collection('polls').doc(pollId);
+                await db.runTransaction(async (transaction) => {
+                    const doc = await transaction.get(pollRef);
+                    if (!doc.exists) throw new Error('Poll not found');
+                    const data = doc.data();
+                    const voters = data.voters || [];
+                    if (voters.includes(deviceId)) throw new Error('Already voted');
+                    const options = data.options || {};
+                    if (!options[optionKey]) throw new Error('Invalid option');
+                    const updatedOptions = { ...options };
+                    updatedOptions[optionKey] = {
+                        ...updatedOptions[optionKey],
+                        votes: (updatedOptions[optionKey].votes || 0) + 1,
+                    };
+                    const totalVotes = (data.totalVotes || 0) + 1;
+                    transaction.update(pollRef, {
+                        options: updatedOptions,
+                        voters: [...voters, deviceId],
+                        totalVotes: totalVotes,
+                    });
+                });
+                saveVotedPollId(pollId);
+                showToast('Vote recorded! 🎉', 'success');
+                // The listener will update the UI automatically
+            } catch (error) {
+                if (error.message === 'Already voted') {
+                    saveVotedPollId(pollId);
+                    showToast('You already voted on this poll', 'warning');
+                } else {
+                    console.error('Vote error:', error);
+                    showToast('Failed to vote: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // ==================== CREATE ====================
+        async function createAnnouncement(title, body) {
+            if (!db) { showToast('Database not connected', 'error'); return false; }
+            try {
+                await db.collection('announcements').add({
+                    title: title.trim(),
+                    body: body.trim(),
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    deviceId: deviceId,
+                    createdBy: currentUserUid || 'anonymous',
+                });
+                showToast('Announcement posted! 📢', 'success');
+                return true;
+            } catch (error) {
+                console.error('Create announcement error:', error);
+                showToast('Failed to post: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        async function createPoll(question, optionTexts) {
+            if (!db) { showToast('Database not connected', 'error'); return false; }
+            if (optionTexts.length < 2) {
+                showToast('Please add at least 2 options', 'warning');
+                return false;
+            }
+            try {
+                const options = {};
+                optionTexts.forEach((text, i) => {
+                    options['opt' + i] = { text: text.trim(), votes: 0 };
+                });
+                await db.collection('polls').add({
+                    question: question.trim(),
+                    options: options,
+                    totalVotes: 0,
+                    voters: [],
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    deviceId: deviceId,
+                    createdBy: currentUserUid || 'anonymous',
+                });
+                showToast('Poll created! 📊', 'success');
+                return true;
+            } catch (error) {
+                console.error('Create poll error:', error);
+                showToast('Failed to create poll: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        // ==================== NAVIGATION ====================
+        function switchTab(tabName) {
+            activeTab = tabName;
+            allTabs.forEach(t => t.classList.add('hidden'));
+            const tabMap = {
+                'announcements': tabAnnouncements,
+                'polls': tabPolls,
+                'create': tabCreate,
+                'notifications': tabNotifications,
+            };
+            if (tabMap[tabName]) tabMap[tabName].classList.remove('hidden');
+
+            allNavBtns.forEach(btn => {
+                const btnTab = btn.dataset.tab;
+                if (btnTab === tabName) {
+                    btn.classList.add('text-primary');
+                    btn.classList.remove('text-slate-400');
+                } else {
+                    btn.classList.remove('text-primary');
+                    btn.classList.add('text-slate-400');
+                }
+            });
+
+            if (tabName === 'notifications') {
+                markAllRead();
+            }
+
+            contentArea.scrollTop = 0;
+        }
+
+        allNavBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                if (tab) switchTab(tab);
+            });
+        });
+
+        btnNotificationBell.addEventListener('click', () => {
+            switchTab('notifications');
+        });
+
+        // ==================== FORM HANDLERS ====================
+        toggleAnnouncementBtn.addEventListener('click', () => {
+            createMode = 'announcement';
+            toggleAnnouncementBtn.classList.add('bg-white', 'shadow-sm', 'text-primary');
+            toggleAnnouncementBtn.classList.remove('text-slate-500');
+            togglePollBtn.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+            togglePollBtn.classList.add('text-slate-500');
+            formAnnouncement.classList.remove('hidden');
+            formPoll.classList.add('hidden');
+        });
+
+        togglePollBtn.addEventListener('click', () => {
+            createMode = 'poll';
+            togglePollBtn.classList.add('bg-white', 'shadow-sm', 'text-primary');
+            togglePollBtn.classList.remove('text-slate-500');
+            toggleAnnouncementBtn.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+            toggleAnnouncementBtn.classList.add('text-slate-500');
+            formAnnouncement.classList.add('hidden');
+            formPoll.classList.remove('hidden');
+        });
+
+        formAnnouncement.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = $('#ann-title').value;
+            const body = $('#ann-body').value;
+            if (!title.trim() || !body.trim()) {
+                showToast('Please fill in all fields', 'warning');
+                return;
+            }
+            const success = await createAnnouncement(title, body);
+            if (success) {
+                formAnnouncement.reset();
+                switchTab('announcements');
+            }
+        });
+
+        formPoll.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const question = $('#poll-question').value;
+            const optionInputs = $$('.poll-option-input');
+            const optionTexts = Array.from(optionInputs).map(inp => inp.value.trim()).filter(t => t);
+            if (!question.trim()) {
+                showToast('Please enter a question', 'warning');
+                return;
+            }
+            if (optionTexts.length < 2) {
+                showToast('Please add at least 2 options', 'warning');
+                return;
+            }
+            const success = await createPoll(question, optionTexts);
+            if (success) {
+                formPoll.reset();
+                // Reset to 2 default options
+                resetPollOptions();
+                switchTab('polls');
+            }
+        });
+
+        btnAddOption.addEventListener('click', () => {
+            const rowCount = $$('.poll-option-row').length;
+            if (rowCount >= 10) {
+                showToast('Maximum 10 options allowed', 'warning');
+                return;
+            }
+            const row = document.createElement('div');
+            row.className = 'flex gap-2 items-center poll-option-row animate-fade-in';
+            row.innerHTML = `
+                <input type="text" placeholder="Option ${rowCount + 1}" required
+                    class="poll-option-input flex-1 px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-slate-50">
+                <button type="button" class="btn-remove-option text-red-400 hover:text-red-600 p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            `;
+            pollOptionsContainer.appendChild(row);
+            updateRemoveButtons();
+            row.querySelector('.btn-remove-option').addEventListener('click', function() {
+                row.remove();
+                updateRemoveButtons();
+                updateOptionPlaceholders();
+            });
+            updateOptionPlaceholders();
+        });
+
+        function updateRemoveButtons() {
+            const rows = $$('.poll-option-row');
+            rows.forEach((row, i) => {
+                const btn = row.querySelector('.btn-remove-option');
+                if (rows.length <= 2) {
+                    btn.classList.add('hidden');
+                } else {
+                    btn.classList.remove('hidden');
+                }
+            });
+        }
+
+        function updateOptionPlaceholders() {
+            const inputs = $$('.poll-option-input');
+            inputs.forEach((inp, i) => {
+                if (!inp.placeholder || inp.placeholder.startsWith('Option ')) {
+                    inp.placeholder = `Option ${i + 1}`;
+                }
+            });
+        }
+
+        function resetPollOptions() {
+            pollOptionsContainer.innerHTML = `
+                <div class="flex gap-2 items-center poll-option-row">
+                    <input type="text" placeholder="Option 1 *" required
+                        class="poll-option-input flex-1 px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-slate-50">
+                    <button type="button" class="btn-remove-option text-red-400 hover:text-red-600 p-2 hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div class="flex gap-2 items-center poll-option-row">
+                    <input type="text" placeholder="Option 2 *" required
+                        class="poll-option-input flex-1 px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-slate-50">
+                    <button type="button" class="btn-remove-option text-red-400 hover:text-red-600 p-2 hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            `;
+            updateRemoveButtons();
+        }
+
+        // Initial setup for remove buttons
+        updateRemoveButtons();
+        $$('.btn-remove-option').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.closest('.poll-option-row').remove();
+                updateRemoveButtons();
+                updateOptionPlaceholders();
+            });
+        });
+
+        // ==================== HELPERS ====================
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function formatTimeAgo(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffSec = Math.floor(diffMs / 1000);
+            const diffMin = Math.floor(diffSec / 60);
+            const diffHr = Math.floor(diffMin / 60);
+            const diffDay = Math.floor(diffHr / 24);
+
+            if (diffSec < 10) return 'Just now';
+            if (diffSec < 60) return `${diffSec}s ago`;
+            if (diffMin < 60) return `${diffMin}m ago`;
+            if (diffHr < 24) return `${diffHr}h ago`;
+            if (diffDay < 7) return `${diffDay}d ago`;
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        // ==================== NOTIFICATION PERMISSION ====================
+        btnRequestPermission.addEventListener('click', async () => {
+            const result = await requestNotificationPermission();
+            if (result === 'granted') {
+                showToast('Notifications enabled! 🔔', 'success');
+                btnRequestPermission.classList.add('hidden');
+            } else if (result === 'denied') {
+                showToast('Notification permission denied. Please enable in browser settings.',
+                    'warning');
+            }
+        });
+
+        async function checkNotificationStatus() {
+            if (!('Notification' in window)) {
+                btnRequestPermission.classList.remove('hidden');
+                return;
+            }
+            if (Notification.permission === 'default') {
+                btnRequestPermission.classList.remove('hidden');
+            } else if (Notification.permission === 'denied') {
+                btnRequestPermission.classList.remove('hidden');
+                btnRequestPermission.textContent = '⚠️ Notifications Blocked - Open Settings';
+            } else {
+                btnRequestPermission.classList.add('hidden');
+            }
+        }
+
+        // ==================== INITIALIZATION ====================
+        async function bootstrap() {
+            deviceId = getDeviceId();
+            seenAnnouncementIds = getSeenIds('seenAnnouncementIds');
+            seenPollIds = getSeenIds('seenPollIds');
+            votedPollIds = getVotedPollIds();
+            notificationLog = getNotificationLog();
+
+            // Try stored config first
+            const storedConfig = getStoredConfig();
+            if (storedConfig && storedConfig.apiKey && !storedConfig.apiKey.startsWith('YOUR_')) {
+                firebaseConfig = storedConfig;
+                const success = await initializeFirebase(firebaseConfig);
+                if (success) {
+                    showMainApp();
+                    await requestNotificationPermission();
+                    checkNotificationStatus();
+                    renderNotificationLog();
+                    return;
+                }
+            }
+
+            // Show setup screen
+            showSetupScreen();
+            // Pre-fill from stored config if any
+            if (storedConfig) {
+                cfgApiKey.value = storedConfig.apiKey || '';
+                cfgAuthDomain.value = storedConfig.authDomain || '';
+                cfgProjectId.value = storedConfig.projectId || '';
+                cfgStorageBucket.value = storedConfig.storageBucket || '';
+                cfgMessagingSenderId.value = storedConfig.messagingSenderId || '';
+                cfgAppId.value = storedConfig.appId || '';
+            }
+        }
+
+        function showSetupScreen() {
+            setupScreen.classList.remove('hidden');
+            mainApp.classList.add('hidden');
+        }
+
+        function showMainApp() {
+            setupScreen.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+            switchTab('announcements');
+        }
+
+        btnSaveConfig.addEventListener('click', async () => {
+            const config = {
+                apiKey: cfgApiKey.value.trim(),
+                authDomain: cfgAuthDomain.value.trim(),
+                projectId: cfgProjectId.value.trim(),
+                storageBucket: cfgStorageBucket.value.trim(),
+                messagingSenderId: cfgMessagingSenderId.value.trim(),
+                appId: cfgAppId.value.trim(),
+            };
+
+            if (!config.apiKey || !config.projectId || !config.appId) {
+                showToast('Please fill in at least API Key, Project ID, and App ID', 'warning');
+                return;
+            }
+
+            btnSaveConfig.disabled = true;
+            btnSaveConfig.textContent = 'Connecting...';
+
+            saveConfigToStorage(config);
+            firebaseConfig = config;
+            const success = await initializeFirebase(config);
+
+            btnSaveConfig.disabled = false;
+            btnSaveConfig.textContent = 'Save & Connect';
+
+            if (success) {
+                showMainApp();
+                await requestNotificationPermission();
+                checkNotificationStatus();
+                renderNotificationLog();
+                showToast('Connected successfully! 🎉', 'success');
+            }
+        });
+
+        // ==================== START ====================
+        bootstrap();
+
+        // ==================== SERVICE WORKER REGISTRATION FOR FCM ====================
+        // Note: For full background push notifications with FCM, you need:
+        // 1. A properly hosted service worker file (firebase-messaging-sw.js)
+        // 2. VAPID key configured in Firebase Console → Cloud Messaging
+        // 3. The app served over HTTPS
+        //
+        // For this demo, we use Firestore listeners + Browser Notification API,
+        // which provides real-time notifications while the app is open.
+        //
+        // To enable full FCM background notifications, create a file named
+        // "firebase-messaging-sw.js" in your web root with the following content:
+        //
+        //   importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
+        //   importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
+        //   firebase.initializeApp({ /* your config */ });
+        //   const messaging = firebase.messaging();
+        //   messaging.onBackgroundMessage((payload) => {
+        //     self.registration.showNotification(payload.notification.title, {
+        //       body: payload.notification.body,
+        //       icon: '/icon.png',
+        //     });
+        //   });
+
+        if ('serviceWorker' in navigator && firebaseConfig && firebaseConfig.apiKey && !firebaseConfig
+            .apiKey.startsWith('YOUR_')) {
+            // Attempt to register a service worker for FCM (will work if firebase-messaging-sw.js exists)
+            navigator.serviceWorker.register('/firebase-messaging-sw.js')
+                .then((reg) => {
+                    console.log('Service Worker registered for FCM:', reg.scope);
+                    if (messaging) {
+                        messaging.useServiceWorker(reg);
+                    }
+                })
+                .catch((err) => {
+                    console.log('Service Worker not found (expected for demo):', err.message);
+                    console.log('Firestore real-time notifications are active instead.');
+                });
+        }
+
+        console.log('📢 Poll & Announcement App initialized!');
+        console.log('📱 Device ID:', deviceId);
+        console.log('🔔 Notification permission:', Notification.permission);
+        console.log('💡 Tip: Open this on two devices/browsers to see real-time notifications in action!');
+    })();
+    </script>
+</body>
+
+</html>
